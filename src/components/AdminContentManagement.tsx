@@ -71,10 +71,10 @@ export const AdminContentManagement = () => {
       // Try scanning with different prefixes to find nested tile structures
       // PRIORITIZE the correct path based on user's actual folder structure
       const scanPrefixes = [
-        'dream-cut/Worlds_Best_Golf_Club/', // USER'S ACTUAL FOLDER STRUCTURE - PRIORITY #1
-        'dream-cut/', // CLI upload prefix
+        'phytomaps-files/Worlds_Best_Golf_Club/', // USER'S ACTUAL FOLDER STRUCTURE - PRIORITY #1
+        'phytomaps-files/', // CLI upload prefix
         'Worlds_Best_Golf_Club/', // Direct golf course folder
-        `dream-cut/${selectedClient.name.replace(/\s+/g, '_')}/`, // CLI upload with underscores
+        `phytomaps-files/${selectedClient.name.replace(/\s+/g, '_')}/`, // CLI upload with underscores
         '', // Root level scan (last resort)
       ]
 

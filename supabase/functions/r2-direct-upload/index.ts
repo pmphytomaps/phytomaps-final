@@ -188,7 +188,7 @@ serve(async (req) => {
       const successfulUploads = uploadResults.filter(r => r.status === 'success').length
       
       if (successfulUploads > 0) {
-        const tileBaseUrl = `https://pub-7a25064ad98f4cf0b9c5ec721b3cbd45.r2.dev/dream-cut/${actualGolfCourseName}/live_maps/${tilesetName}`
+        const tileBaseUrl = `https://pub-7a25064ad98f4cf0b9c5ec721b3cbd45.r2.dev/phytomaps-files/${actualGolfCourseName}/live_maps/${tilesetName}`
         
         const { error: dbError } = await supabase
           .from('content_files')
