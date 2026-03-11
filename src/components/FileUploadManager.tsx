@@ -83,6 +83,9 @@ export const FileUploadManagerFixed = ({
     });
 
     // 3. Finalize upload
+    // Force a session refresh in case the token expired during a long file upload
+    await supabase.auth.getSession();
+    
     const { data: completeData, error: completeError } = await supabase.functions.invoke('r2-complete', {
       body: { fileId: presignData.fileId, success: true, isZipFile: file.name.endsWith('.zip') && category === 'live_maps' }
     });

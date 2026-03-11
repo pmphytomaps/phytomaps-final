@@ -333,7 +333,8 @@ export const useDeleteContentFile = () => {
     mutationFn: async (fileId: string) => {
       console.log('Delete mutation called with fileId:', fileId)
 
-      // Use the enhanced R2 delete function to delete both R2 files and database record
+      // Force session refresh before getting the token
+      await supabase.auth.getSession()
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) {
         console.error('No session found')
