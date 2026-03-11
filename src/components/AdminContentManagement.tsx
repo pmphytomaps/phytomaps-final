@@ -328,7 +328,7 @@ export const AdminContentManagement = () => {
                           acceptedFormats={
                             type.id === 'reports' ? ['.pdf', '.doc', '.docx'] :
                               type.id === '3d_models' ? ['.obj', '.fbx', '.gltf', '.glb'] :
-                                type.id === 'live_maps' ? ['.jpg', '.jpeg', '.png', '.zip', '.shp', '.shx', '.dbf', '.prj', '.geojson', '.json'] :
+                                type.id === 'live_maps' ? ['.jpg', '.jpeg', '.png', '.zip', '.shp', '.shx', '.dbf', '.prj', '.geojson', '.json', '.tif', '.tiff'] :
                                   type.id === 'hd_maps' ? ['.jpg', '.jpeg', '.png'] :
                                     ['.jpg', '.jpeg', '.png']
                           }
