@@ -12,7 +12,7 @@ on:
         required: true
         type: string
       golf_course_id:
-        description: 'Golf course (club) UUID'
+        description: 'Golf course ID (integer)'
         required: true
         type: string
       golf_course_name:
@@ -75,21 +75,15 @@ jobs:
 
       - name: Reproject to EPSG:4326 if needed
         run: |
-          python3 -c "
-          import json
-          m = json.load(open('/tmp/metadata.json'))
-          if m.get('needs_reproject'):
-              print('Reprojecting to EPSG:4326...')
-          else:
-              print('Already in EPSG:4326, skipping reproject')
-          "
-
           # Check if reprojection is needed
           NEEDS_REPROJECT=$(python3 -c "import json; m=json.load(open('/tmp/metadata.json')); print('yes' if m.get('needs_reproject') else 'no')")
           if [ "$NEEDS_REPROJECT" = "yes" ]; then
+            echo "Reprojecting to EPSG:4326..."
             gdalwarp -t_srs EPSG:4326 /tmp/input.tif /tmp/reprojected.tif
             mv /tmp/reprojected.tif /tmp/input.tif
             echo "Reprojection complete"
+          else
+            echo "Already in EPSG:4326, skipping reproject"
           fi
 
       - name: Generate tiles with gdal2tiles
@@ -136,6 +130,8 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
         run: |
           BOUNDS='${{ steps.metadata.outputs.bounds }}'
           CENTER_LAT=${{ steps.metadata.outputs.center_lat }}
@@ -155,14 +151,14 @@ jobs:
 
           echo "Registering tileset in Supabase..."
 
-          # Insert into golf_course_tilesets
-          curl -s -X POST "${SUPABASE_URL}/rest/v1/golf_course_tilesets" \
+          # Insert into golf_course_tilesets (using golf_course_id INTEGER to match the app's active_golf_courses table)
+          REGISTER_RESULT=$(curl -s -w "\n%{http_code}" -X POST "${SUPABASE_URL}/rest/v1/golf_course_tilesets" \
             -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
             -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
             -H "Content-Type: application/json" \
             -H "Prefer: return=representation" \
             -d "{
-              \"golf_club_id\": \"${GOLF_COURSE_ID}\",
+              \"golf_course_id\": ${GOLF_COURSE_ID},
               \"name\": \"${COURSE_NAME} - ${TODAY}\",
               \"description\": \"Auto-tiled from uploaded TIFF\",
               \"r2_folder_path\": \"${COURSE_NAME}/tiles\",
@@ -181,22 +177,47 @@ jobs:
               \"is_active\": true,
               \"flight_date\": \"${TODAY}\",
               \"flight_time\": \"${NOW_TIME}\"
-            }"
+            }")
 
-          echo ""
+          HTTP_STATUS=$(echo "$REGISTER_RESULT" | tail -1)
+          BODY=$(echo "$REGISTER_RESULT" | head -n -1)
+          echo "Register response (${HTTP_STATUS}): ${BODY}"
+
+          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+            echo "ERROR: Failed to register tileset (HTTP ${HTTP_STATUS})"
+            exit 1
+          fi
+
           echo "Tileset registered successfully"
 
-      - name: Update content file status
+      - name: Update content file status to published
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           FILE_ID="${{ inputs.file_id }}"
+          COURSE_NAME="${{ inputs.golf_course_name }}"
+          TILED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-          curl -s -X PATCH "${SUPABASE_URL}/rest/v1/content_files?id=eq.${FILE_ID}" \
+          # Update content_files: set status back to 'published' so the frontend shows it
+          UPDATE_RESULT=$(curl -s -w "\n%{http_code}" -X PATCH "${SUPABASE_URL}/rest/v1/content_files?id=eq.${FILE_ID}" \
             -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
             -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
             -H "Content-Type: application/json" \
-            -d '{"status": "processed", "metadata": {"tiling_complete": true, "tiled_at": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}}'
+            -d "{
+              \"status\": \"published\",
+              \"is_tile_map\": true,
+              \"tile_min_zoom\": ${{ steps.metadata.outputs.min_zoom }},
+              \"tile_max_zoom\": ${{ steps.metadata.outputs.max_zoom }},
+              \"metadata\": {\"tiling_complete\": true, \"tiled_at\": \"${TILED_AT}\", \"tile_folder\": \"${COURSE_NAME}/tiles\"}
+            }")
 
-          echo "Content file status updated to 'processed'"
+          HTTP_STATUS=$(echo "$UPDATE_RESULT" | tail -1)
+          BODY=$(echo "$UPDATE_RESULT" | head -n -1)
+          echo "Update response (${HTTP_STATUS}): ${BODY}"
+
+          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+            echo "WARNING: Failed to update content file status (HTTP ${HTTP_STATUS})"
+          else
+            echo "Content file status updated to 'published'"
+          fi

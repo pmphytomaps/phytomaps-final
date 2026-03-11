@@ -269,7 +269,8 @@ const MapboxGolfCourseMap = ({
 
         const sourceId = `tileset-source-${tileset.id}`;
         const layerId = `tileset-layer-${tileset.id}`;
-        const tileUrlTemplate = `${supabaseUrl}/functions/v1/tile-proxy?tilesetId=${tileset.id}&z={z}&x={x}&y={y}&token=${session.access_token}`;
+        // Use path-based tile URL: tile-proxy reads R2 path from golf_course_tilesets using tilesetId
+        const tileUrlTemplate = `${supabaseUrl}/functions/v1/tile-proxy/${encodeURIComponent(tileset.id)}/{z}/{x}/{y}.png`;
 
         console.log('Loading raster tiles:', tileset.name);
 
