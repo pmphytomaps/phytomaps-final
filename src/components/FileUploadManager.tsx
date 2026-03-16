@@ -37,7 +37,7 @@ export const FileUploadManagerFixed = ({
   const [isDragOver, setIsDragOver] = useState(false)
   const { toast } = useToast()
 
-  // Unified upload helper
+  // Unified upload helper — uses multipart for files >= 25 MB
   async function uploadFileToR2({
     file,
     golfCourseId,
@@ -53,7 +53,7 @@ export const FileUploadManagerFixed = ({
     gpsCoordinates?: { lat: number, lng: number },
     onProgress?: (percent: number) => void,
   }) {
-    // 1. Get presigned URL
+    // 1. Register the file in the DB and get back fileId + objectKey via r2-presign
     const { data: presignData, error: presignError } = await supabase.functions.invoke('r2-presign', {
       body: {
         fileName: file.name,
@@ -67,17 +67,11 @@ export const FileUploadManagerFixed = ({
     });
     if (presignError) throw presignError;
 
-    // 2. Upload file to R2
-    await new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open('PUT', presignData.uploadUrl);
-      xhr.setRequestHeader('Content-Type', file.type || 'image/tiff');
-      xhr.upload.onprogress = (e) => {
     const MULTIPART_THRESHOLD = 25 * 1024 * 1024; // 25 MB
 
     if (file.size < MULTIPART_THRESHOLD) {
       // --- Small file: fast single PUT ---
-      await new Promise((resolve, reject) => {
+      await new Promise<void>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.open('PUT', presignData.uploadUrl);
         xhr.setRequestHeader('Content-Type', file.type || 'image/tiff');
@@ -86,25 +80,27 @@ export const FileUploadManagerFixed = ({
             onProgress(Math.round((e.loaded / e.total) * 100));
           }
         };
-        xhr.onload = () => xhr.status === 200 ? resolve(null) : reject(new Error(`Upload failed: HTTP ${xhr.status}`));
-        xhr.onerror = reject;
+        xhr.onload = () => xhr.status === 200 ? resolve() : reject(new Error(`Upload failed: HTTP ${xhr.status}`));
+        xhr.onerror = () => reject(new Error('Network error during upload'));
         xhr.send(file);
       });
     } else {
       // --- Large file: chunked S3 multipart upload ---
-      const CHUNK_SIZE = 50 * 1024 * 1024;      // 50 MB parts
-      const PARALLEL_PARTS = 3;                  // 3 concurrent parts at a time
+      const CHUNK_SIZE = 50 * 1024 * 1024;  // 50 MB parts
+      const PARALLEL_PARTS = 3;              // 3 concurrent parts at a time
       const MAX_RETRIES = 5;
       const objectKey = presignData.objectKey;
       const numParts = Math.ceil(file.size / CHUNK_SIZE);
 
-      console.log(`[Multipart] Starting upload: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)} MB) in ${numParts} parts`);
+      console.log(`[Multipart] Starting: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)} MB) in ${numParts} parts`);
 
       // Step A: Create multipart upload session on R2
       const { data: createData, error: createError } = await supabase.functions.invoke('r2-sign', {
         body: { action: 'createMultipartUpload', key: objectKey }
       });
-      if (createError || !createData?.uploadId) throw new Error(`Failed to create multipart upload: ${createError?.message || 'No uploadId'}`);
+      if (createError || !createData?.uploadId) {
+        throw new Error(`Failed to create multipart upload: ${createError?.message || 'No uploadId'}`);
+      }
       const uploadId = createData.uploadId;
 
       // Step B: Get presigned URLs for all parts
@@ -112,14 +108,16 @@ export const FileUploadManagerFixed = ({
       const { data: urlsData, error: urlsError } = await supabase.functions.invoke('r2-sign', {
         body: { action: 'getMultipartPutUrls', key: objectKey, uploadId, partNumbers }
       });
-      if (urlsError || !urlsData?.urls) throw new Error(`Failed to get part URLs: ${urlsError?.message || 'No URLs'}`);
+      if (urlsError || !urlsData?.urls) {
+        throw new Error(`Failed to get part URLs: ${urlsError?.message || 'No URLs'}`);
+      }
       const partUrls: { partNumber: number; url: string }[] = urlsData.urls;
 
       const completedParts: { PartNumber: number; ETag: string }[] = new Array(numParts);
       let uploadedBytes = 0;
-
-      // Step C: Upload parts in parallel with retry
       let partIndex = 0;
+
+      // Step C: Upload parts in parallel with exponential back-off retry
       const workers = Array.from({ length: Math.min(PARALLEL_PARTS, numParts) }, async () => {
         while (partIndex < numParts) {
           const idx = partIndex++;
@@ -144,9 +142,11 @@ export const FileUploadManagerFixed = ({
               break;
             } catch (err: any) {
               attempt++;
-              if (attempt >= MAX_RETRIES) throw new Error(`Part ${idx + 1} failed after ${MAX_RETRIES} retries: ${err.message}`);
-              const delay = 2000 * Math.pow(2, attempt - 1); // 2s, 4s, 8s, 16s back-off
-              console.warn(`[Multipart] Part ${idx + 1} attempt ${attempt} failed (${err.message}), retrying in ${delay}ms…`);
+              if (attempt >= MAX_RETRIES) {
+                throw new Error(`Part ${idx + 1} failed after ${MAX_RETRIES} retries: ${err.message}`);
+              }
+              const delay = 2000 * Math.pow(2, attempt - 1); // 2s, 4s, 8s, 16s
+              console.warn(`[Multipart] Part ${idx + 1} attempt ${attempt} failed, retrying in ${delay}ms…`);
               await new Promise(r => setTimeout(r, delay));
             }
           }
@@ -159,18 +159,20 @@ export const FileUploadManagerFixed = ({
 
       await Promise.all(workers);
 
-      // Step D: Complete multipart upload (assemble on Cloudflare's side)
-      await supabase.auth.getSession(); // ensure token is fresh
-      const { error: completeError } = await supabase.functions.invoke('r2-sign', {
+      // Step D: Complete multipart upload — Cloudflare assembles the parts server-side
+      await supabase.auth.getSession(); // ensure token is fresh before completing
+      const { error: completeMultipartError } = await supabase.functions.invoke('r2-sign', {
         body: { action: 'completeMultipartUpload', key: objectKey, uploadId, parts: completedParts }
       });
-      if (completeError) throw new Error(`Failed to complete multipart upload: ${completeError.message}`);
-      console.log(`[Multipart] Upload complete: ${file.name}`);
+      if (completeMultipartError) {
+        throw new Error(`Failed to complete multipart upload: ${completeMultipartError.message}`);
+      }
+      console.log(`[Multipart] Done: ${file.name}`);
     }
 
     onProgress?.(100);
 
-    // 3. Finalize: refresh session then call r2-complete to trigger tiling pipeline
+    // 3. Finalize — refresh session then notify r2-complete to trigger the tiling pipeline
     await supabase.auth.getSession();
     const { error: completeCallError } = await supabase.functions.invoke('r2-complete', {
       body: { fileId: presignData.fileId, success: true, isZipFile: file.name.endsWith('.zip') && category === 'live_maps' }
@@ -181,7 +183,6 @@ export const FileUploadManagerFixed = ({
   }
 
   const handleFileUpload = useCallback(async (files: File[]) => {
-    // Log the selected golf course ID and category before upload
     console.log('[FileUploadManager] Selected golfCourseId:', golfCourseId, 'Category:', category)
     if (!golfCourseId || typeof golfCourseId !== 'number' || isNaN(golfCourseId)) {
       toast({
@@ -199,7 +200,6 @@ export const FileUploadManagerFixed = ({
     )
 
     if (isTileUpload) {
-      // Use direct R2 upload for tile folders
       await handleTileFolderUpload(files)
       return
     }
@@ -230,7 +230,6 @@ export const FileUploadManagerFixed = ({
 
     for (const file of validFiles) {
       const uploadId = crypto.randomUUID()
-      // Get GPS coordinates only for live_maps category
       let gpsCoordinates: { lat: number, lng: number } | undefined
       if (category === 'live_maps' && navigator.geolocation) {
         try {
@@ -256,7 +255,6 @@ export const FileUploadManagerFixed = ({
         gpsCoordinates
       }])
       try {
-        // Use unified presigned URL upload for all files
         await uploadFileToR2({
           file,
           golfCourseId,
@@ -309,12 +307,11 @@ export const FileUploadManagerFixed = ({
     }])
 
     try {
-      // Prepare file data for batch upload
       const fileData = []
       
       for (let i = 0; i < tileFiles.length; i++) {
         const file = tileFiles[i]
-        const relativePath = file.webkitRelativePath.split('/').slice(1).join('/') // Remove folder name
+        const relativePath = file.webkitRelativePath.split('/').slice(1).join('/')
         const content = await convertFileToBase64(file)
         
         fileData.push({
@@ -323,15 +320,12 @@ export const FileUploadManagerFixed = ({
           contentType: file.type
         })
         
-        // Update progress for preparation
-        const progress = Math.round(((i + 1) / tileFiles.length) * 50) // 50% for preparation
+        const progress = Math.round(((i + 1) / tileFiles.length) * 50)
         setUploadingFiles(prev => prev.map(f => f.id === uploadId ? { ...f, progress } : f))
       }
 
-      // Get golf course name (you might need to pass this as a prop or fetch it)
-      const golfCourseName = `golf_course_${golfCourseId}` // Or get actual name
+      const golfCourseName = `golf_course_${golfCourseId}`
 
-      // Upload to R2 via Supabase edge function
       const { data, error } = await supabase.functions.invoke('r2-direct-upload', {
         body: {
           golfCourseName,
@@ -519,11 +513,3 @@ export const FileUploadManagerFixed = ({
     </Card>
   )
 }
-
-// Helper function to calculate file hash (if needed)
-async function calculateFileHash(file: File): Promise<string> {
-  const buffer = await file.arrayBuffer()
-  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer)
-  const hashArray = Array.from(new Uint8Array(hashBuffer))
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
-} 
