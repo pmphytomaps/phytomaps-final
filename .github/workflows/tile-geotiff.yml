@@ -111,7 +111,8 @@ jobs:
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
         run: |
           COURSE_NAME="${{ inputs.golf_course_name }}"
-          R2_FOLDER="${COURSE_NAME}/tiles"
+          FILE_ID="${{ inputs.file_id }}"
+          R2_FOLDER="${COURSE_NAME}/tiles/${FILE_ID}"
 
           echo "Uploading tiles to R2: ${R2_FOLDER}/"
 
@@ -160,7 +161,7 @@ jobs:
               \"golf_course_id\": ${GOLF_COURSE_ID},
               \"name\": \"${COURSE_NAME} - ${TODAY}\",
               \"description\": \"Auto-tiled from uploaded TIFF\",
-              \"r2_folder_path\": \"${COURSE_NAME}/tiles\",
+              \"r2_folder_path\": \"${COURSE_NAME}/tiles/${FILE_ID}\",
               \"tile_url_pattern\": \"{z}/{x}/{y}.png\",
               \"min_lat\": ${MIN_LAT},
               \"max_lat\": ${MAX_LAT},
@@ -208,7 +209,7 @@ jobs:
               \"is_tile_map\": true,
               \"tile_min_zoom\": ${{ steps.metadata.outputs.min_zoom }},
               \"tile_max_zoom\": ${{ steps.metadata.outputs.max_zoom }},
-              \"metadata\": {\"tiling_complete\": true, \"tiled_at\": \"${TILED_AT}\", \"tile_folder\": \"${COURSE_NAME}/tiles\"}
+              \"metadata\": {\"tiling_complete\": true, \"tiled_at\": \"${TILED_AT}\", \"tile_folder\": \"${COURSE_NAME}/tiles/${FILE_ID}\"}
             }")
 
           HTTP_STATUS=$(echo "$UPDATE_RESULT" | tail -1)

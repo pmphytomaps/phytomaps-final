@@ -9,6 +9,7 @@ import { MapPin, Layers, ZoomIn, ZoomOut, Maximize2, AlertCircle, Activity, Arro
 import { TilesetService } from '@/lib/tilesetService';
 import { supabase } from '@/integrations/supabase/client';
 import DateLayerDropdown from '@/components/DateLayerDropdown';
+import RasterLayerDropdown from '@/components/RasterLayerDropdown';
 import MapSwipeControl from '@/components/MapSwipeControl';
 import DualMapSwipe from '@/components/DualMapSwipe';
 import HealthMapStack from '@/components/HealthMapStack';
@@ -76,6 +77,7 @@ const MapboxGolfCourseMap = ({
   
   // Raster layer control - lazy loading (starts OFF, loads when toggled ON)
   const [showRasterLayers, setShowRasterLayers] = useState(false);
+  const [rasterOpacity, setRasterOpacity] = useState(0.85);
   const rasterLoadingRef = useRef(false);
   const [rasterLayersLoaded, setRasterLayersLoaded] = useState(false);
   
@@ -329,7 +331,7 @@ const MapboxGolfCourseMap = ({
             type: 'raster',
             source: sourceId,
             paint: {
-              'raster-opacity': 0.85
+              'raster-opacity': rasterOpacity
             }
           });
 
@@ -342,6 +344,21 @@ const MapboxGolfCourseMap = ({
 
     loadRasterTiles();
   }, [showRasterLayers, selectedLayers, tilesets, mapReady]);
+
+  // Update raster opacity dynamically
+  useEffect(() => {
+    if (!map.current) return;
+    selectedLayers.forEach(tilesetId => {
+      const layerId = `tileset-layer-${tilesetId}`;
+      if (map.current!.getLayer(layerId)) {
+        try {
+          map.current!.setPaintProperty(layerId, 'raster-opacity', rasterOpacity);
+        } catch (e) {
+          console.warn(`Could not set opacity for ${layerId}:`, e);
+        }
+      }
+    });
+  }, [rasterOpacity, selectedLayers]);
 
   // Control raster layer visibility (show/hide after loaded)
   useEffect(() => {
@@ -1137,6 +1154,18 @@ const MapboxGolfCourseMap = ({
             />
           )}
           
+          {tilesets.length > 0 && (
+            <RasterLayerDropdown
+              tilesets={tilesets}
+              selectedIds={selectedLayers}
+              onSelectionChange={setSelectedLayers}
+              enabled={showRasterLayers}
+              onToggleEnabled={setShowRasterLayers}
+              opacity={rasterOpacity}
+              onOpacityChange={setRasterOpacity}
+            />
+          )}
+          
           <DualMapSwipe
             map={map.current}
             layerId={swipeLayerId}
@@ -1149,13 +1178,6 @@ const MapboxGolfCourseMap = ({
         </div>
       </CardContent>
     </Card>
-
-    {/* Raster Layer Selection - Below map card */}
-    <DateLayerDropdown
-      tilesets={tilesets}
-      selectedLayers={selectedLayers}
-      onLayerChange={handleLayerChange}
-    />
 
     {map.current && map.current.loaded() && (
       <>
