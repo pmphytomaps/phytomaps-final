@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { useT } from '@/translations';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -52,6 +53,7 @@ const MapboxGolfCourseMap = ({
   className = '',
   onMapReady
 }: MapboxGolfCourseMapProps) => {
+  const t = useT();
   const wrapperRef = useRef<HTMLDivElement>(null);
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -1209,8 +1211,8 @@ const MapboxGolfCourseMap = ({
         <CardContent className="p-8 text-center">
           <div className="space-y-4">
             <div className="animate-spin w-16 h-16 border-2 border-primary border-t-transparent rounded-full mx-auto" />
-            <h3 className="text-lg font-medium">Loading Map</h3>
-            <p className="text-muted-foreground">Fetching golf course data...</p>
+            <h3 className="text-lg font-medium">{t.map.loadingMap}</h3>
+            <p className="text-muted-foreground">{t.map.loadingMapDesc}</p>
           </div>
         </CardContent>
       </Card>
@@ -1225,9 +1227,9 @@ const MapboxGolfCourseMap = ({
             <div className="w-16 h-16 mx-auto bg-destructive/10 rounded-full flex items-center justify-center">
               <AlertCircle className="w-8 h-8 text-destructive" />
             </div>
-            <h3 className="text-lg font-medium">Map Not Available</h3>
+            <h3 className="text-lg font-medium">{t.map.mapNotAvailable}</h3>
             <p className="text-muted-foreground">
-              {error || 'No map data found for this golf course'}
+              {error || t.map.mapNotAvailableDesc}
             </p>
           </div>
         </CardContent>
@@ -1239,7 +1241,7 @@ const MapboxGolfCourseMap = ({
 
   // Build the unified list of all available layers for the Swipe Selector
   const getAllAvailableLayersForSwipe = () => {
-    const options = [{ id: 'null', name: 'Base Map (Satellite)', type: 'base' }];
+    const options = [{ id: 'null', name: t.map.baseSatellite, type: 'base' }];
     
     if (rasterLayersLoaded) {
       selectedLayers.forEach(id => {
@@ -1352,22 +1354,22 @@ const MapboxGolfCourseMap = ({
           {/* === Top-Right: Nav Controls + Compare Toggle === */}
           <div className="absolute top-4 right-4 flex flex-col items-end gap-2 z-20">
             <div className="bg-background/95 backdrop-blur shadow-md rounded-lg overflow-hidden flex flex-col border border-border">
-              <Button variant="ghost" size="icon" onClick={zoomIn} title="Zoom in" className="h-9 w-9 shrink-0 rounded-none border-b border-border hover:bg-muted focus:ring-0">
+              <Button variant="ghost" size="icon" onClick={zoomIn} title={t.map.zoomIn} className="h-9 w-9 shrink-0 rounded-none border-b border-border hover:bg-muted focus:ring-0">
                 <ZoomIn className="w-4 h-4" />
               </Button>
-              <Button variant="ghost" size="icon" onClick={zoomOut} title="Zoom out" className="h-9 w-9 shrink-0 rounded-none border-b border-border hover:bg-muted focus:ring-0">
+              <Button variant="ghost" size="icon" onClick={zoomOut} title={t.map.zoomOut} className="h-9 w-9 shrink-0 rounded-none border-b border-border hover:bg-muted focus:ring-0">
                 <ZoomOut className="w-4 h-4" />
               </Button>
-              <Button variant="ghost" size="icon" onClick={() => setShowVectorLabels(!showVectorLabels)} title={showVectorLabels ? "Hide all labels" : "Show all labels"} className="h-9 w-9 shrink-0 rounded-none border-b border-border hover:bg-muted focus:ring-0">
+              <Button variant="ghost" size="icon" onClick={() => setShowVectorLabels(!showVectorLabels)} title={showVectorLabels ? t.map.hideLabels : t.map.showLabels} className="h-9 w-9 shrink-0 rounded-none border-b border-border hover:bg-muted focus:ring-0">
                 <Tag className={`w-4 h-4 ${showVectorLabels ? 'text-primary' : 'text-muted-foreground'}`} />
               </Button>
-              <Button variant="ghost" size="icon" onClick={resetView} title="Reset view to map tiles" className="h-9 w-9 shrink-0 rounded-none border-b border-border hover:bg-muted focus:ring-0">
+              <Button variant="ghost" size="icon" onClick={resetView} title={t.map.resetView} className="h-9 w-9 shrink-0 rounded-none border-b border-border hover:bg-muted focus:ring-0">
                 <MapPin className="w-4 h-4" />
               </Button>
-              <Button variant="ghost" size="icon" onClick={centerOnCurrentLocation} title="Center to current location" className="h-9 w-9 shrink-0 rounded-none border-b border-border hover:bg-muted focus:ring-0">
+              <Button variant="ghost" size="icon" onClick={centerOnCurrentLocation} title={t.map.centerLocation} className="h-9 w-9 shrink-0 rounded-none border-b border-border hover:bg-muted focus:ring-0">
                 <LocateFixed className="w-4 h-4" />
               </Button>
-              <Button variant="ghost" size="icon" onClick={toggleFullscreen} title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"} className="h-9 w-9 shrink-0 rounded-none hover:bg-muted focus:ring-0">
+              <Button variant="ghost" size="icon" onClick={toggleFullscreen} title={isFullscreen ? t.map.exitFullscreen : t.map.enterFullscreen} className="h-9 w-9 shrink-0 rounded-none hover:bg-muted focus:ring-0">
                 <Maximize2 className="w-4 h-4" />
               </Button>
             </div>
@@ -1376,7 +1378,7 @@ const MapboxGolfCourseMap = ({
               onClick={() => setSwipeEnabled(!swipeEnabled)}
             >
               <MoveHorizontal className="w-3.5 h-3.5" />
-              <span className="text-xs font-semibold whitespace-nowrap">{swipeEnabled ? 'Exit Compare' : 'Compare Maps'}</span>
+              <span className="text-xs font-semibold whitespace-nowrap">{swipeEnabled ? t.map.exitCompare : t.map.compareMaps}</span>
             </div>
           </div>
 
@@ -1387,7 +1389,7 @@ const MapboxGolfCourseMap = ({
               onClick={() => setShowVectorLayerPanel(v => !v)}
             >
               <Layers className="w-4 h-4 text-primary" />
-              <span>Layers</span>
+              <span>{t.map.layersBtn}</span>
               {showVectorLayerPanel && <X className="w-3 h-3 opacity-60 ml-0.5" />}
             </button>
           </div>
@@ -1403,7 +1405,7 @@ const MapboxGolfCourseMap = ({
               <div className="flex items-center justify-between px-5 py-4 border-b border-teal-800/80 shrink-0 bg-teal-900/40">
                 <div className="flex items-center gap-2.5">
                   <Layers className="w-4 h-4 text-teal-400" />
-                  <span className="font-semibold text-[15px] tracking-wide text-teal-50">Active Layers</span>
+                  <span className="font-semibold text-[15px] tracking-wide text-teal-50">{t.map.panelTitle}</span>
                 </div>
                 <button
                   onClick={() => setShowVectorLayerPanel(false)}
@@ -1415,12 +1417,12 @@ const MapboxGolfCourseMap = ({
 
               {/* Show All / Hide All */}
               <div className="px-5 py-3 border-b border-teal-800/40 bg-teal-900/20 flex justify-between items-center shrink-0">
-                <span className="text-[11px] font-bold uppercase tracking-widest text-teal-200/60">Draw Order</span>
+                <span className="text-[11px] font-bold uppercase tracking-widest text-teal-200/60">{t.map.drawOrder}</span>
                 <button 
                   onClick={toggleAllUnifiedLayers}
                   className="text-[11px] font-bold text-teal-400 hover:text-teal-200 transition-colors uppercase tracking-wider bg-teal-900/40 hover:bg-teal-800/60 px-2 py-1 rounded"
                 >
-                  {allLayersVisible ? 'Hide All' : 'Show All'}
+                  {allLayersVisible ? t.map.hideAll : t.map.showAll}
                 </button>
               </div>
 
@@ -1451,7 +1453,7 @@ const MapboxGolfCourseMap = ({
                     </DndContext>
                   ) : (
                     <div className="text-center py-8 text-teal-200/50 text-sm">
-                      No layers available for this course.
+                      {t.map.noLayers}
                     </div>
                   )}
                   
@@ -1459,7 +1461,7 @@ const MapboxGolfCourseMap = ({
                   {selectedLayers.length > 0 && showRasterLayers && (
                     <div className="mt-6 px-3 py-3 bg-teal-900/40 rounded-lg border border-teal-800/60 border-t border-t-teal-600/20">
                       <div className="flex justify-between text-[11px] font-semibold text-teal-300 mb-2 uppercase tracking-wide">
-                        <span>Base Imagery Opacity</span>
+                        <span>{t.map.baseImageryOpacity}</span>
                         <span className="text-teal-100">{Math.round(rasterOpacity * 100)}%</span>
                       </div>
                       <input

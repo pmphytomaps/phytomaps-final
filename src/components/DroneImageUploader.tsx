@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
@@ -11,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { useDropzone } from 'react-dropzone';
 import * as exifr from 'exifr';
 import { useUploadContext } from '@/contexts/UploadContext';
+import { useT } from '@/translations';
 
 interface DroneImageUploaderProps {
     golfCourseId: number;
@@ -21,6 +21,7 @@ interface DroneImageUploaderProps {
 export function DroneImageUploader({ golfCourseId, golfCourseName, onUploadComplete }: DroneImageUploaderProps) {
     const { droneUploadState, setDroneUploadState, clearDroneUploadState } = useUploadContext();
     const { flightDate, flightTime, selectedFiles, isUploading, uploadProgress, uploadStatus, errorMessage } = droneUploadState;
+    const t = useT();
 
     const setFlightDate = (date: string) => setDroneUploadState(prev => ({ ...prev, flightDate: date }));
     const setFlightTime = (time: string) => setDroneUploadState(prev => ({ ...prev, flightTime: time }));
@@ -44,36 +45,32 @@ export function DroneImageUploader({ golfCourseId, golfCourseName, onUploadCompl
 
         if (acceptedFiles.length === 0) return;
 
-        // Extract EXIF from the first file if we haven't already
         if (!flightDate || !flightTime) {
             setIsExtractingExif(true);
             try {
-                // Parse EXIF tags for date and time. pick: limits parsing to just these tags for speed
                 const exifData = await exifr.parse(acceptedFiles[0], { pick: ['DateTimeOriginal', 'CreateDate'] });
                 
                 const rawDate = exifData?.DateTimeOriginal || exifData?.CreateDate;
                 if (rawDate) {
                     const dateObj = typeof rawDate === 'string' ? new Date(rawDate) : rawDate;
                     if (!isNaN(dateObj.getTime())) {
-                        // Format YYYY-MM-DD
                         const yyyy = dateObj.getFullYear();
                         const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
                         const dd = String(dateObj.getDate()).padStart(2, '0');
                         setFlightDate(`${yyyy}-${mm}-${dd}`);
 
-                        // Format HH:mm
                         const hours = String(dateObj.getHours()).padStart(2, '0');
                         const minutes = String(dateObj.getMinutes()).padStart(2, '0');
                         setFlightTime(`${hours}:${minutes}`);
                     } else {
-                        setErrorMessage('Could not determine valid date from image metadata.');
+                        setErrorMessage(t.droneUploader.errBadExif);
                     }
                 } else {
-                    setErrorMessage('No EXIF date metadata found in the first image.');
+                    setErrorMessage(t.droneUploader.errNoExif);
                 }
             } catch (error) {
                 console.error('Error extracting EXIF data:', error);
-                setErrorMessage('Failed to extract metadata. Please make sure the images contain valid EXIF data.');
+                setErrorMessage(t.droneUploader.errExifFailed);
             } finally {
                 setIsExtractingExif(false);
             }
@@ -91,7 +88,7 @@ export function DroneImageUploader({ golfCourseId, golfCourseName, onUploadCompl
 
     const handleUpload = async () => {
         if (!flightDate || !flightTime || selectedFiles.length === 0) {
-            setErrorMessage('Please provide flight date, time, and select images');
+            setErrorMessage(t.droneUploader.errMissingFields);
             return;
         }
 
@@ -122,7 +119,6 @@ export function DroneImageUploader({ golfCourseId, golfCourseName, onUploadCompl
             setUploadProgress(100);
             onUploadComplete?.();
 
-            // Reset form after a few seconds
             setTimeout(() => {
                 clearDroneUploadState();
             }, 3000);
@@ -155,10 +151,10 @@ export function DroneImageUploader({ golfCourseId, golfCourseName, onUploadCompl
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                     <Upload className="w-5 h-5 text-primary" />
-                    Upload Drone Imagery
+                    {t.droneUploader.cardTitle}
                 </CardTitle>
                 <CardDescription>
-                    Upload raw drone images (JPEG/PNG/TIFF) for {golfCourseName}.
+                    {t.droneUploader.cardDesc(golfCourseName)}
                 </CardDescription>
             </CardHeader>
 
@@ -166,30 +162,30 @@ export function DroneImageUploader({ golfCourseId, golfCourseName, onUploadCompl
                 {/* Flight Date & Time (Auto-extracted) */}
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                        <Label>Flight Date</Label>
+                        <Label>{t.droneUploader.labelFlightDate}</Label>
                         <div className={cn(
                             "flex items-center h-10 w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm text-muted-foreground",
                             !flightDate && "italic opacity-70"
                         )}>
                             <Calendar className="w-4 h-4 mr-2 opacity-50" />
-                            {isExtractingExif ? 'Extracting...' : (flightDate || 'Extracted automatically')}
+                            {isExtractingExif ? t.droneUploader.extracting : (flightDate || t.droneUploader.extractedAuto)}
                         </div>
                     </div>
                     <div className="space-y-2">
-                        <Label>Flight Time</Label>
+                        <Label>{t.droneUploader.labelFlightTime}</Label>
                         <div className={cn(
                             "flex items-center h-10 w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm text-muted-foreground",
                             !flightDate && "italic opacity-70"
                         )}>
                             <Clock className="w-4 h-4 mr-2 opacity-50" />
-                            {isExtractingExif ? 'Extracting...' : (flightTime || 'Extracted automatically')}
+                            {isExtractingExif ? t.droneUploader.extracting : (flightTime || t.droneUploader.extractedAuto)}
                         </div>
                     </div>
                 </div>
 
                 {/* Drag and Drop Zone */}
                 <div className="space-y-2">
-                    <Label>Drone Images *</Label>
+                    <Label>{t.droneUploader.labelImages}</Label>
                     <div
                         {...getRootProps()}
                         className={cn(
@@ -201,13 +197,10 @@ export function DroneImageUploader({ golfCourseId, golfCourseName, onUploadCompl
                         <input {...getInputProps()} />
                         <Upload className="mx-auto h-12 w-12 text-muted-foreground/50 mb-4" />
                         <p className="text-sm font-medium">
-                            {isDragActive
-                                ? "Drop the files here ..."
-                                : "Drag 'n' drop image files here, or click to select files"
-                            }
+                            {isDragActive ? t.droneUploader.dropActive : t.droneUploader.dropIdle}
                         </p>
                         <p className="text-xs mt-2 opacity-75">
-                            Supports JPEG, PNG, TIFF. Max file size: 50MB per file.
+                            {t.droneUploader.dropHint}
                         </p>
                     </div>
                 </div>
@@ -216,7 +209,7 @@ export function DroneImageUploader({ golfCourseId, golfCourseName, onUploadCompl
                 {selectedFiles.length > 0 && (
                     <div className="bg-muted/30 p-4 rounded-lg">
                         <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm font-medium">{selectedFiles.length} files selected</span>
+                            <span className="text-sm font-medium">{t.droneUploader.filesSelected(selectedFiles.length)}</span>
                             <span className="text-xs text-muted-foreground">{formatSize(totalSize)}</span>
                         </div>
                         <div className="max-h-32 overflow-y-auto space-y-2 pr-2">
@@ -227,7 +220,7 @@ export function DroneImageUploader({ golfCourseId, golfCourseName, onUploadCompl
                                         <span className="text-muted-foreground">{formatSize(file.size)}</span>
                                         {!isUploading && (
                                             <button onClick={() => removeFile(idx)} className="text-destructive hover:underline">
-                                                Remove
+                                                {t.droneUploader.remove}
                                             </button>
                                         )}
                                     </div>
@@ -236,7 +229,7 @@ export function DroneImageUploader({ golfCourseId, golfCourseName, onUploadCompl
                         </div>
                         {!isUploading && selectedFiles.length > 0 && (
                             <Button variant="ghost" size="sm" className="w-full mt-2 text-xs" onClick={() => setSelectedFiles([])}>
-                                Clear All
+                                {t.droneUploader.clearAll}
                             </Button>
                         )}
                     </div>
@@ -247,7 +240,7 @@ export function DroneImageUploader({ golfCourseId, golfCourseName, onUploadCompl
                     {isUploading && (
                         <div className="space-y-2">
                             <div className="flex justify-between text-sm text-muted-foreground">
-                                <span>Uploading images...</span>
+                                <span>{t.droneUploader.uploading}</span>
                                 <span className="font-medium">{uploadProgress}%</span>
                             </div>
                             <Progress value={uploadProgress} className="w-full h-2" />
@@ -262,12 +255,12 @@ export function DroneImageUploader({ golfCourseId, golfCourseName, onUploadCompl
                         {isUploading ? (
                             <>
                                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                Processing...
+                                {t.droneUploader.processing}
                             </>
                         ) : (
                             <>
                                 <Upload className="w-4 h-4 mr-2" />
-                                Upload {selectedFiles.length} Images
+                                {t.droneUploader.uploadBtn(selectedFiles.length)}
                             </>
                         )}
                     </Button>
@@ -278,7 +271,7 @@ export function DroneImageUploader({ golfCourseId, golfCourseName, onUploadCompl
                     <Alert className="bg-success-green/10 border-success-green/30">
                         <CheckCircle className="w-4 h-4 text-success-green" />
                         <AlertDescription className="text-success-green">
-                            Images uploaded successfully! They are now in the processing queue.
+                            {t.droneUploader.successMsg}
                         </AlertDescription>
                     </Alert>
                 )}

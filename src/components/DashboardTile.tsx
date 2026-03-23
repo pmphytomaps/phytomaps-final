@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button"
 import { LucideIcon } from "lucide-react"
+import { useT } from "@/translations"
 
 interface DashboardTileProps {
   title: string
@@ -18,6 +19,8 @@ export const DashboardTile = ({
   badge,
   onClick 
 }: DashboardTileProps) => {
+  const t = useT()
+
   return (
     <Button
       variant="tile"
@@ -41,7 +44,7 @@ export const DashboardTile = ({
           <div className="pt-1">
             <span className="text-lg sm:text-xl lg:text-2xl font-bold text-primary-teal">{count}</span>
             <span className="text-xs sm:text-sm text-muted-foreground ml-1">
-              {count === 1 ? 'item' : 'items'}
+              {count === 1 ? t.tiles.itemSingular : t.tiles.itemPlural}
             </span>
           </div>
         )}

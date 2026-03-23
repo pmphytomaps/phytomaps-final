@@ -1,18 +1,25 @@
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Sun, Moon } from "lucide-react";
 import phytoMapsLogo from "/lovable-uploads/b377485b-420a-475e-81d5-4cb44b625614.png";
+import { useTheme } from "@/contexts/ThemeContext";
+
 interface AdminHeaderProps {
   userName: string;
   onLogout: () => void;
   pendingApprovals?: number;
 }
+
 export const AdminHeader = ({
   userName,
   onLogout,
   pendingApprovals = 0
 }: AdminHeaderProps) => {
-  return <header className="bg-white/95 backdrop-blur-sm border-b border-border/50 sticky top-0 z-50">
+  const { theme, toggleTheme } = useTheme();
+
+  return (
+    <header className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-border/50 sticky top-0 z-50">
       <div className="container mx-auto px-4 sm:px-6 py-3 sm:py-4">
         <div className="flex items-center justify-between">
           {/* Logo Section */}
@@ -39,6 +46,21 @@ export const AdminHeader = ({
               </Badge>}
             
             <div className="flex items-center gap-2 sm:gap-3">
+              {/* Dark Mode Toggle */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleTheme}
+                className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
+                title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              >
+                {theme === "dark" ? (
+                  <Sun className="h-4 w-4" />
+                ) : (
+                  <Moon className="h-4 w-4" />
+                )}
+              </Button>
+
               <Avatar className="h-6 w-6 sm:h-8 sm:w-8">
                 <AvatarFallback className="bg-primary-teal/10 text-primary-teal text-sm">
                   {userName.split(' ').map(n => n[0]).join('')}
@@ -58,5 +80,6 @@ export const AdminHeader = ({
           </div>
         </div>
       </div>
-    </header>;
+    </header>
+  );
 };

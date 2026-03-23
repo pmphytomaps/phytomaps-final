@@ -16,6 +16,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useT } from '@/translations';
 
 interface UploadedImage {
     id: string;
@@ -41,6 +42,7 @@ export function RecentUploads({ golfCourseId, golfCourseName, refreshTrigger }: 
     const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
     const [isBatchDeleting, setIsBatchDeleting] = useState(false);
     const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+    const t = useT();
 
     // Dialog State
     const [deleteConfirmInfo, setDeleteConfirmInfo] = useState<{
@@ -122,7 +124,7 @@ export function RecentUploads({ golfCourseId, golfCourseName, refreshTrigger }: 
 
             setUploads(prev => prev.filter(u => u.id !== image.id));
             setSelectedIds(prev => { const n = new Set(prev); n.delete(image.id); return n; });
-            setStatusMessage({ type: 'success', text: `Deleted "${image.original_filename}"` });
+            setStatusMessage({ type: 'success', text: t.recentUploads.successDeletedSingle(image.original_filename) });
             setTimeout(() => setStatusMessage(null), 3000);
         } catch (err: any) {
             setStatusMessage({ type: 'error', text: err.message || 'Failed to delete file' });
@@ -150,8 +152,7 @@ export function RecentUploads({ golfCourseId, golfCourseName, refreshTrigger }: 
             setUploads(prev => prev.filter(u => !selectedIds.has(u.id)));
             setSelectedIds(new Set());
 
-            let msg = `Successfully deleted ${deleted} file${deleted !== 1 ? 's' : ''}`;
-            if (skipped > 0) msg += ` (${skipped} skipped — older than 24h)`;
+            let msg = t.recentUploads.successDeletedBatch(deleted, skipped);
             if (data?.partialError) msg += ` ${data.partialError}`;
 
             setStatusMessage({ type: 'success', text: msg });
@@ -185,9 +186,9 @@ export function RecentUploads({ golfCourseId, golfCourseName, refreshTrigger }: 
         const diffMs = Date.now() - date.getTime();
         const diffMin = Math.floor(diffMs / 60000);
         const diffHr = Math.floor(diffMin / 60);
-        if (diffMin < 1) return 'Just now';
-        if (diffMin < 60) return `${diffMin}m ago`;
-        if (diffHr < 24) return `${diffHr}h ago`;
+        if (diffMin < 1) return t.recentUploads.justNow;
+        if (diffMin < 60) return t.recentUploads.minutesAgo(diffMin);
+        if (diffHr < 24) return t.recentUploads.hoursAgo(diffHr);
         return date.toLocaleDateString();
     };
 
@@ -200,7 +201,7 @@ export function RecentUploads({ golfCourseId, golfCourseName, refreshTrigger }: 
                     <div className="flex items-center justify-between">
                         <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                             <ImageIcon className="w-5 h-5 text-primary" />
-                            Recent Uploads
+                            {t.recentUploads.cardTitle}
                             {uploads.length > 0 && (
                                 <Badge variant="secondary" className="ml-1 text-xs">
                                     {uploads.length}
@@ -212,7 +213,7 @@ export function RecentUploads({ golfCourseId, golfCourseName, refreshTrigger }: 
                         </Button>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                        Files uploaded in the last 24 hours. Select files to delete them in bulk.
+                        {t.recentUploads.cardSubtitle}
                     </p>
                 </CardHeader>
 
@@ -229,12 +230,15 @@ export function RecentUploads({ golfCourseId, golfCourseName, refreshTrigger }: 
                                     className="text-xs h-7 px-2"
                                 >
                                     <CheckSquare className="w-3.5 h-3.5 mr-1" />
-                                    {allSelected ? 'Deselect All' : 'Select All'}
+                                    {allSelected ? t.recentUploads.deselectAll : t.recentUploads.selectAll}
                                 </Button>
                                 {selectedIds.size > 0 && (
                                     <span className="text-xs text-muted-foreground hidden sm:inline">
-                                        {selectedIds.size} of {uploads.length} selected
-                                        ({formatSize(uploads.filter(u => selectedIds.has(u.id)).reduce((s, u) => s + (u.file_size || 0), 0))})
+                                        {t.recentUploads.selectedSummary(
+                                            selectedIds.size,
+                                            uploads.length,
+                                            formatSize(uploads.filter(u => selectedIds.has(u.id)).reduce((s, u) => s + (u.file_size || 0), 0))
+                                        )}
                                     </span>
                                 )}
                             </div>
@@ -248,9 +252,9 @@ export function RecentUploads({ golfCourseId, golfCourseName, refreshTrigger }: 
                                     className="text-xs h-7 px-3"
                                 >
                                     {isBatchDeleting ? (
-                                        <><RefreshCw className="w-3.5 h-3.5 mr-1 animate-spin" /> Deleting...</>
+                                        <><RefreshCw className="w-3.5 h-3.5 mr-1 animate-spin" /> {t.recentUploads.deleting}</>
                                     ) : (
-                                        <><Trash2 className="w-3.5 h-3.5 mr-1" /> Delete {selectedIds.size}</>
+                                        <><Trash2 className="w-3.5 h-3.5 mr-1" /> {t.recentUploads.deleteSelected(selectedIds.size)}</>
                                     )}
                                 </Button>
                             )}
@@ -274,7 +278,7 @@ export function RecentUploads({ golfCourseId, golfCourseName, refreshTrigger }: 
                     {isLoading && (
                         <div className="flex items-center justify-center py-6">
                             <RefreshCw className="w-5 h-5 animate-spin text-muted-foreground mr-2" />
-                            <span className="text-sm text-muted-foreground">Loading uploads...</span>
+                            <span className="text-sm text-muted-foreground">{t.recentUploads.loading}</span>
                         </div>
                     )}
 
@@ -324,7 +328,7 @@ export function RecentUploads({ golfCourseId, golfCourseName, refreshTrigger }: 
                                             onClick={(e) => confirmSingleDelete(e, image)}
                                             disabled={isDeleting}
                                             className="shrink-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 p-1.5 h-auto"
-                                            title="Delete this file"
+                                            title={t.recentUploads.deleteTooltip}
                                         >
                                             {deletingIds.has(image.id) ? (
                                                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -341,8 +345,8 @@ export function RecentUploads({ golfCourseId, golfCourseName, refreshTrigger }: 
                     {/* Summary footer */}
                     {!isLoading && uploads.length > 0 && (
                         <div className="pt-2 border-t border-border/50 flex justify-between items-center text-xs text-muted-foreground">
-                            <span>Total: {formatSize(uploads.reduce((sum, u) => sum + (u.file_size || 0), 0))}</span>
-                            <span>Uploaded in the last 24h</span>
+                            <span>{t.recentUploads.totalLabel} {formatSize(uploads.reduce((sum, u) => sum + (u.file_size || 0), 0))}</span>
+                            <span>{t.recentUploads.last24h}</span>
                         </div>
                     )}
                 </CardContent>
@@ -354,21 +358,20 @@ export function RecentUploads({ golfCourseId, golfCourseName, refreshTrigger }: 
             >
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogTitle>{t.recentUploads.dialogTitle}</AlertDialogTitle>
                         <AlertDialogDescription>
                             {deleteConfirmInfo.type === 'single'
-                                ? `You are about to delete "${deleteConfirmInfo.image?.original_filename}". `
-                                : `You are about to delete ${selectedIds.size} selected file${selectedIds.size !== 1 ? 's' : ''}. `}
-                            This action cannot be undone. This will permanently delete the file(s) from our servers.
+                                ? t.recentUploads.dialogDescSingle(deleteConfirmInfo.image?.original_filename ?? '')
+                                : t.recentUploads.dialogDescBatch(selectedIds.size)}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel>{t.recentUploads.dialogCancel}</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleConfirmAction}
                             className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
                         >
-                            Continue
+                            {t.recentUploads.dialogConfirm}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

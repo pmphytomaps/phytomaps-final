@@ -6,36 +6,18 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileDownloader } from "@/components/FileDownloader";
 import MapboxGolfCourseMap from "@/components/MapboxGolfCourseMap";
-import { Map, FileText, Image, Box, Search, Filter, Calendar, MapPin, Grid, List, ArrowLeft } from "lucide-react";
+import { Map, FileText, Image, Box, Search, Grid, List, ArrowLeft } from "lucide-react";
 import { useContentFiles } from "@/hooks/useSupabaseQuery";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
+import { useT } from "@/translations";
+
 interface ClientContentViewerProps {
   golfCourseId: number;
   golfCourseName: string;
   onBack?: () => void;
 }
-const contentTypes = [{
-  id: 'live_maps',
-  name: 'Live Maps',
-  icon: Map,
-  color: 'text-blue-600'
-}, {
-  id: 'reports',
-  name: 'Reports',
-  icon: FileText,
-  color: 'text-green-600'
-}, {
-  id: 'hd_maps',
-  name: 'HD Maps',
-  icon: Image,
-  color: 'text-purple-600'
-}, {
-  id: '3d_models',
-  name: '3D Models',
-  icon: Box,
-  color: 'text-orange-600'
-}] as const;
+
 export const ClientContentViewer = ({
   golfCourseId,
   golfCourseName,
@@ -51,6 +33,16 @@ export const ClientContentViewer = ({
     data: contentFiles = [],
     isLoading
   } = useContentFiles(golfCourseId);
+  const t = useT();
+
+  // Content types built from translations so names react to language changes
+  const contentTypes = [
+    { id: 'live_maps' as const, name: t.contentSection.liveMapsName, icon: Map, color: 'text-blue-600' },
+    { id: 'reports' as const, name: t.contentSection.reportsName, icon: FileText, color: 'text-green-600' },
+    { id: 'hd_maps' as const, name: t.contentSection.hdMapsName, icon: Image, color: 'text-purple-600' },
+    { id: '3d_models' as const, name: t.contentSection.modelsName, icon: Box, color: 'text-orange-600' },
+  ];
+
   const filteredFiles = contentFiles.filter(file => {
     const matchesSearch = file.filename.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || file.file_category === selectedCategory;
@@ -58,15 +50,20 @@ export const ClientContentViewer = ({
     const isPublished = file.status === 'published';
     return matchesSearch && matchesCategory && matchesTab && isPublished;
   });
+
   if (isLoading) {
-    return <div className="flex items-center justify-center p-8">
+    return (
+      <div className="flex items-center justify-center p-8">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-teal mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading content...</p>
+          <p className="text-muted-foreground">{t.contentViewer.loadingContent}</p>
         </div>
-      </div>;
+      </div>
+    );
   }
-  return <div className="space-y-4 sm:space-y-6 px-2 sm:px-4">
+
+  return (
+    <div className="space-y-4 sm:space-y-6 px-2 sm:px-4">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-2 sm:gap-4">
@@ -81,7 +78,7 @@ export const ClientContentViewer = ({
               {golfCourseName}
             </h1>
             <p className="text-sm sm:text-base text-white/80 hidden sm:block">
-              Access your mapping data and reports
+              {t.contentViewer.subtitle}
             </p>
           </div>
         </div>
@@ -92,7 +89,7 @@ export const ClientContentViewer = ({
           size={isMobile ? "sm" : "default"}
         >
           <Map className="h-4 w-4" />
-          {showMapView ? 'Hide Map' : 'Show Map'}
+          {showMapView ? t.contentViewer.hideMap : t.contentViewer.showMap}
         </Button>
       </div>
 
@@ -115,7 +112,7 @@ export const ClientContentViewer = ({
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input 
-                  placeholder="Search files..." 
+                  placeholder={t.contentViewer.searchPlaceholder}
                   value={searchTerm} 
                   onChange={e => setSearchTerm(e.target.value)} 
                   className="pl-10 w-full"
@@ -131,7 +128,7 @@ export const ClientContentViewer = ({
                 className="flex-1 sm:flex-none"
               >
                 <Grid className="h-4 w-4" />
-                <span className="ml-1 sm:hidden">Grid</span>
+                <span className="ml-1 sm:hidden">{t.contentViewer.grid}</span>
               </Button>
               <Button 
                 variant={viewMode === 'list' ? 'teal' : 'outline'} 
@@ -140,7 +137,7 @@ export const ClientContentViewer = ({
                 className="flex-1 sm:flex-none"
               >
                 <List className="h-4 w-4" />
-                <span className="ml-1 sm:hidden">List</span>
+                <span className="ml-1 sm:hidden">{t.contentViewer.list}</span>
               </Button>
             </div>
           </div>
@@ -192,7 +189,9 @@ export const ClientContentViewer = ({
                   <div className="text-center p-6 sm:p-8 border-2 border-dashed border-border rounded-lg">
                     <type.icon className={`h-8 w-8 sm:h-12 sm:w-12 mx-auto mb-4 ${type.color} opacity-50`} />
                     <p className="text-sm sm:text-base text-muted-foreground">
-                      {searchTerm ? 'No files match your search' : `No ${type.name.toLowerCase()} available`}
+                      {searchTerm
+                        ? t.contentViewer.noFilesSearch
+                        : t.contentViewer.noFilesEmpty(type.name)}
                     </p>
                   </div>
                 )}
@@ -201,5 +200,6 @@ export const ClientContentViewer = ({
           </Tabs>
         </CardContent>
       </Card>
-    </div>;
+    </div>
+  );
 };

@@ -6,6 +6,8 @@ import { Map, FileText, Image, Box, TrendingUp } from "lucide-react";
 import { useContentFiles } from "@/hooks/useSupabaseQuery";
 import { DroneImageUploader } from "@/components/DroneImageUploader";
 import { RecentUploads } from "@/components/RecentUploads";
+import { useT } from "@/translations";
+
 interface ClientDashboardProps {
   onLogout: () => void;
   onTileClick: (section: string) => void;
@@ -16,6 +18,7 @@ interface ClientDashboardProps {
   assignedCourses?: any[];
   onCourseChange?: (id: number) => void;
 }
+
 export const ClientDashboard = ({
   onLogout,
   onTileClick,
@@ -31,6 +34,8 @@ export const ClientDashboard = ({
     data: contentFiles = [],
     isLoading
   } = useContentFiles(golfCourseId);
+  const t = useT();
+
   const getNewFilesCount = (category: string, sectionAlias: string) => {
     const lastVisitedStr = localStorage.getItem(`last_visited_${sectionAlias}_${golfCourseId}`);
     const lastVisited = lastVisitedStr ? parseInt(lastVisitedStr, 10) : 0;
@@ -50,49 +55,51 @@ export const ClientDashboard = ({
 
     return [
       {
-        title: "Live Maps",
-        description: "Interactive course mapping",
+        title: t.tiles.liveMapsTitle,
+        description: t.tiles.liveMapsDesc,
         icon: Map,
         count: isLoading ? 0 : contentFiles.filter(f => f.file_category === 'live_maps' && f.status === 'published').length,
-        badge: liveMapsNew > 0 ? `${liveMapsNew} New` : undefined,
+        badge: liveMapsNew > 0 ? `${liveMapsNew} ${t.dashboard.badgeNew}` : undefined,
         section: "live-maps",
         status: "active"
       },
       {
-        title: "Reports",
-        description: "Analysis & documentation",
+        title: t.tiles.reportsTitle,
+        description: t.tiles.reportsDesc,
         icon: FileText,
         count: isLoading ? 0 : contentFiles.filter(f => f.file_category === 'reports' && f.status === 'published').length,
-        badge: reportsNew > 0 ? `${reportsNew} New` : undefined,
+        badge: reportsNew > 0 ? `${reportsNew} ${t.dashboard.badgeNew}` : undefined,
         section: "reports",
         status: "active"
       },
       {
-        title: "HD Maps",
-        description: "High-resolution imagery",
+        title: t.tiles.hdMapsTitle,
+        description: t.tiles.hdMapsDesc,
         icon: Image,
         count: isLoading ? 0 : contentFiles.filter(f => f.file_category === 'hd_maps' && f.status === 'published').length,
-        badge: hdMapsNew > 0 ? `${hdMapsNew} New` : undefined,
+        badge: hdMapsNew > 0 ? `${hdMapsNew} ${t.dashboard.badgeNew}` : undefined,
         section: "hd-maps",
         status: "active"
       },
       {
-        title: "3D Models",
-        description: "Three-dimensional views",
+        title: t.tiles.modelsTitle,
+        description: t.tiles.modelsDesc,
         icon: Box,
         count: isLoading ? 0 : contentFiles.filter(f => f.file_category === '3d_models' && f.status === 'published').length,
-        badge: modelsNew > 0 ? `${modelsNew} New` : undefined,
+        badge: modelsNew > 0 ? `${modelsNew} ${t.dashboard.badgeNew}` : undefined,
         section: "3d-models",
         status: "active"
       }
     ];
   };
+
   const dashboardData = getDashboardData();
   
   const handleTileClick = (section: string) => {
     localStorage.setItem(`last_visited_${section}_${golfCourseId}`, Date.now().toString());
     onTileClick(section);
   };
+
   const totalFiles = contentFiles.filter(f => f.status === 'published').length;
   const totalSize = contentFiles.reduce((sum, file) => sum + (file.file_size || 0), 0);
   const formatSize = (bytes: number) => {
@@ -101,78 +108,92 @@ export const ClientDashboard = ({
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + sizes[i];
   };
-  return <div className="min-h-screen bg-gradient-to-br from-background to-muted/30">
-    <ClientHeader 
-      golfCourseName={golfCourseName} 
-      userName={userFullName} 
-      onLogout={onLogout} 
-      activeCourseId={golfCourseId}
-      assignedCourses={assignedCourses}
-      onCourseChange={onCourseChange}
-    />
 
-    <main className="container mx-auto px-4 sm:px-6 py-4 sm:py-8">
-      <div className="grid grid-cols-1 gap-6 sm:gap-8">
-        {/* Main Content Area */}
-        <div className="space-y-6 sm:space-y-8">
-          {/* 4-Tile Grid Navigation */}
-          <div>
-            <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-3 sm:mb-4">Course Data Access</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-              {dashboardData.map(tile => <DashboardTile key={tile.section} title={tile.title} description={tile.description} icon={tile.icon} count={tile.count} badge={tile.badge} onClick={() => handleTileClick(tile.section)} />)}
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted/30">
+      <ClientHeader 
+        golfCourseName={golfCourseName} 
+        userName={userFullName} 
+        onLogout={onLogout} 
+        activeCourseId={golfCourseId}
+        assignedCourses={assignedCourses}
+        onCourseChange={onCourseChange}
+      />
+
+      <main className="container mx-auto px-4 sm:px-6 py-4 sm:py-8">
+        <div className="grid grid-cols-1 gap-6 sm:gap-8">
+          {/* Main Content Area */}
+          <div className="space-y-6 sm:space-y-8">
+            {/* 4-Tile Grid Navigation */}
+            <div>
+              <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-3 sm:mb-4">
+                {t.dashboard.sectionHeading}
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                {dashboardData.map(tile => (
+                  <DashboardTile
+                    key={tile.section}
+                    title={tile.title}
+                    description={tile.description}
+                    icon={tile.icon}
+                    count={tile.count}
+                    badge={tile.badge}
+                    onClick={() => handleTileClick(tile.section)}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Quick Stats */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                  <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />
+                  {t.dashboard.statsTitle}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                  <div className="text-center">
+                    <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-primary-teal mb-1">{totalFiles}</div>
+                    <div className="text-xs sm:text-sm text-muted-foreground">{t.dashboard.statsTotalFiles}</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-success-green mb-1">{contentFiles.filter(f => f.file_category === 'live_maps').length}</div>
+                    <div className="text-xs sm:text-sm text-muted-foreground">{t.dashboard.statsMapsAvailable}</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-accent-teal mb-1">{formatSize(totalSize)}</div>
+                    <div className="text-xs sm:text-sm text-muted-foreground">{t.dashboard.statsDataSize}</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-warning-amber mb-1">{totalFiles > 0 ? '100%' : '0%'}</div>
+                    <div className="text-xs sm:text-sm text-muted-foreground">{t.dashboard.statsAvailable}</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Drone Image Upload */}
+            <div className="mt-8">
+              <DroneImageUploader
+                golfCourseId={golfCourseId}
+                golfCourseName={golfCourseName}
+                onUploadComplete={() => setUploadRefreshTrigger(prev => prev + 1)}
+              />
+            </div>
+
+            {/* Recent Uploads */}
+            <div className="mt-6">
+              <RecentUploads
+                golfCourseId={golfCourseId}
+                golfCourseName={golfCourseName}
+                refreshTrigger={uploadRefreshTrigger}
+              />
             </div>
           </div>
-
-          {/* Quick Stats */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />
-                Course Data Overview
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-                <div className="text-center">
-                  <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-primary-teal mb-1">{totalFiles}</div>
-                  <div className="text-xs sm:text-sm text-muted-foreground">Total Files</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-success-green mb-1">{contentFiles.filter(f => f.file_category === 'live_maps').length}</div>
-                  <div className="text-xs sm:text-sm text-muted-foreground">Maps Available</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-accent-teal mb-1">{formatSize(totalSize)}</div>
-                  <div className="text-xs sm:text-sm text-muted-foreground">Data Size</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-warning-amber mb-1">{totalFiles > 0 ? '100%' : '0%'}</div>
-                  <div className="text-xs sm:text-sm text-muted-foreground">Available</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Drone Image Upload */}
-          <div className="mt-8">
-            <DroneImageUploader
-              golfCourseId={golfCourseId}
-              golfCourseName={golfCourseName}
-              onUploadComplete={() => setUploadRefreshTrigger(prev => prev + 1)}
-            />
-          </div>
-
-          {/* Recent Uploads */}
-          <div className="mt-6">
-            <RecentUploads
-              golfCourseId={golfCourseId}
-              golfCourseName={golfCourseName}
-              refreshTrigger={uploadRefreshTrigger}
-            />
-          </div>
         </div>
-
-      </div>
-    </main>
-  </div>;
+      </main>
+    </div>
+  );
 };

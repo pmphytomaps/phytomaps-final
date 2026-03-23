@@ -10,6 +10,7 @@ import { ClientContentViewer } from "@/components/ClientContentViewer"
 import { ClientContentSection } from "@/components/ClientContentSection"
 import { useAuth } from "@/hooks/useAuth"
 import { supabase } from "@/integrations/supabase/client"
+import { LanguageProvider } from "@/contexts/LanguageContext"
 
 type AppState =
   | { view: 'landing' }
@@ -264,35 +265,41 @@ export const PMVApp = () => {
         return null
       }
       return (
-        <ClientDashboard
-          onLogout={handleLogout}
-          onTileClick={handleTileClick}
-          userFullName={userProfile?.full_name || userProfile?.email || "User"}
-          golfCourseName={currentActiveCourse?.name || "Golf Course"}
-          golfCourseLocation={currentActiveCourse?.location}
-          golfCourseId={activeCourseId || 1}
-          assignedCourses={assignedCourses}
-          onCourseChange={setActiveCourseId}
-        />
+        <LanguageProvider>
+          <ClientDashboard
+            onLogout={handleLogout}
+            onTileClick={handleTileClick}
+            userFullName={userProfile?.full_name || userProfile?.email || "User"}
+            golfCourseName={currentActiveCourse?.name || "Golf Course"}
+            golfCourseLocation={currentActiveCourse?.location}
+            golfCourseId={activeCourseId || 1}
+            assignedCourses={assignedCourses}
+            onCourseChange={setActiveCourseId}
+          />
+        </LanguageProvider>
       )
 
     case 'client-content':
       return (
-        <ClientContentViewer
-          golfCourseId={activeCourseId || 1}
-          golfCourseName={currentActiveCourse?.name || "Golf Course"}
-          onBack={handleBackToDashboard}
-        />
+        <LanguageProvider>
+          <ClientContentViewer
+            golfCourseId={activeCourseId || 1}
+            golfCourseName={currentActiveCourse?.name || "Golf Course"}
+            onBack={handleBackToDashboard}
+          />
+        </LanguageProvider>
       )
 
     case 'client-section':
       return (
-        <ClientContentSection
-          golfCourseId={activeCourseId || 1}
-          golfCourseName={currentActiveCourse?.name || "Golf Course"}
-          contentType={appState.contentType}
-          onBack={handleBackToDashboard}
-        />
+        <LanguageProvider>
+          <ClientContentSection
+            golfCourseId={activeCourseId || 1}
+            golfCourseName={currentActiveCourse?.name || "Golf Course"}
+            contentType={appState.contentType}
+            onBack={handleBackToDashboard}
+          />
+        </LanguageProvider>
       )
 
     default:
