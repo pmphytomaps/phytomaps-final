@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Download, Eye, FileText, Image, MapPin, Trash2 } from "lucide-react"
+import { Download, Eye, FileText, Image, MapPin, Trash2, Sheet } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { supabase } from "@/integrations/supabase/client"
 import { FilePreviewModal } from "@/components/FilePreviewModal"
@@ -47,6 +47,8 @@ export const FileDownloader = ({
   const getFileIcon = () => {
     if (file.mime_type?.startsWith('image/')) return <Image className="h-4 w-4" />
     if (file.mime_type?.includes('pdf')) return <FileText className="h-4 w-4" />
+    const isExcel = file.mime_type?.includes('spreadsheet') || file.mime_type?.includes('excel') || file.filename?.endsWith('.xls') || file.filename?.endsWith('.xlsx')
+    if (isExcel) return <Sheet className="h-4 w-4 text-green-600" />
     return <FileText className="h-4 w-4" />
   }
 
@@ -84,7 +86,7 @@ export const FileDownloader = ({
       if (data instanceof ArrayBuffer) {
         blob = new Blob([data], { type: file.mime_type || 'application/octet-stream' })
       } else if (data instanceof Uint8Array) {
-        blob = new Blob([data], { type: file.mime_type || 'application/octet-stream' })
+        blob = new Blob([data as unknown as BlobPart], { type: file.mime_type || 'application/octet-stream' })
       } else if (typeof data === 'string') {
         // Handle data URLs or base64 encoded data
         if (data.startsWith('data:')) {
@@ -208,7 +210,8 @@ export const FileDownloader = ({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
   }
 
-  const canPreview = file.mime_type?.startsWith('image/') || file.mime_type?.includes('pdf')
+  const isExcel = file.mime_type?.includes('spreadsheet') || file.mime_type?.includes('excel') || file.filename?.endsWith('.xls') || file.filename?.endsWith('.xlsx')
+  const canPreview = file.mime_type?.startsWith('image/') || file.mime_type?.includes('pdf') || isExcel
 
   if (variant === "icon") {
     return (

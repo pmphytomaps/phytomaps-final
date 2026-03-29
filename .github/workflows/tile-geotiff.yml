@@ -89,7 +89,7 @@ jobs:
       - name: Generate tiles with gdal2tiles
         run: |
           MIN_ZOOM=12
-          MAX_ZOOM=20
+          MAX_ZOOM=22
 
           echo "Tiling from zoom $MIN_ZOOM to $MAX_ZOOM..."
 
@@ -137,7 +137,7 @@ jobs:
           CENTER_LAT=${{ steps.metadata.outputs.center_lat }}
           CENTER_LON=${{ steps.metadata.outputs.center_lon }}
           MIN_ZOOM=12
-          MAX_ZOOM=20
+          MAX_ZOOM=22
           COURSE_NAME="${{ inputs.golf_course_name }}"
           GOLF_COURSE_ID="${{ inputs.golf_course_id }}"
           FILE_ID="${{ inputs.file_id }}"

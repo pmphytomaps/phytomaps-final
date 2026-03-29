@@ -47,9 +47,17 @@ export const AdminContentManagement = () => {
   }
 
   const handleDeleteFile = (fileId: string) => {
-    deleteFileMutation.mutate(fileId, {
-      onSuccess: () => refetch()
-    })
+    const file = currentContent.find(f => f.id === fileId)
+    if (file) {
+      deleteFileMutation.mutate({
+        fileId: file.id,
+        objectKey: file.r2_object_key,
+        bucketName: file.r2_bucket_name,
+        deleteFolder: !!file.is_tile_map
+      }, {
+        onSuccess: () => refetch()
+      })
+    }
   }
 
   const handleScanForNewFolders = async () => {
@@ -158,7 +166,12 @@ export const AdminContentManagement = () => {
     try {
       // Delete all live maps files one by one
       for (const file of liveMapsFiles) {
-        deleteFileMutation.mutate(file.id)
+        deleteFileMutation.mutate({
+          fileId: file.id,
+          objectKey: file.r2_object_key,
+          bucketName: file.r2_bucket_name,
+          deleteFolder: !!file.is_tile_map
+        })
       }
 
       toast({
@@ -331,7 +344,7 @@ export const AdminContentManagement = () => {
                           onUploadComplete={handleFileUploadComplete}
                           maxFileSize={50000} // 50GB for all files
                           acceptedFormats={
-                            type.id === 'reports' ? ['.pdf', '.doc', '.docx'] :
+                            type.id === 'reports' ? ['.pdf', '.doc', '.docx', '.xls', '.xlsx'] :
                               type.id === '3d_models' ? ['.obj', '.fbx', '.gltf', '.glb'] :
                                 type.id === 'live_maps' ? ['.jpg', '.jpeg', '.png', '.zip', '.shp', '.shx', '.dbf', '.prj', '.geojson', '.json', '.tif', '.tiff'] :
                                   type.id === 'hd_maps' ? ['.jpg', '.jpeg', '.png'] :

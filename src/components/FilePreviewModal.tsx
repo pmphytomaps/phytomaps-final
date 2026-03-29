@@ -1,4 +1,4 @@
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -8,6 +8,7 @@ import {
   Move, RotateCcw
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { read, utils } from "xlsx"
 
 interface ContentFile {
   id: string
@@ -48,6 +49,33 @@ export const FilePreviewModal = ({
   const [lastTouchDistance, setLastTouchDistance] = useState(0)
   const [initialPinchZoom, setInitialPinchZoom] = useState(1)
   const imageRef = useRef<HTMLImageElement>(null)
+  
+  const [excelHtml, setExcelHtml] = useState<string | null>(null)
+  const [isLoadingExcel, setIsLoadingExcel] = useState(false)
+  
+  const isExcel = file?.mime_type?.includes('spreadsheet') || file?.mime_type?.includes('excel') || file?.filename?.endsWith('.xls') || file?.filename?.endsWith('.xlsx')
+
+  useEffect(() => {
+    if (isOpen && previewUrl && file && isExcel) {
+      setIsLoadingExcel(true);
+      fetch(previewUrl)
+        .then(res => res.arrayBuffer())
+        .then(ab => {
+          const workbook = read(ab, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const html = utils.sheet_to_html(worksheet, { id: 'excel-table' });
+          setExcelHtml(html);
+        })
+        .catch(err => {
+          console.error("Failed to parse Excel file", err);
+          setExcelHtml("<div class='p-4 text-center text-destructive'>Failed to render Excel file</div>");
+        })
+        .finally(() => setIsLoadingExcel(false));
+    } else {
+      setExcelHtml(null);
+    }
+  }, [isOpen, previewUrl, file, isExcel]);
 
   if (!file || !previewUrl) return null
 
@@ -160,6 +188,7 @@ export const FilePreviewModal = ({
   const getFileIcon = () => {
     if (file.mime_type?.startsWith('image/')) return <ImageIcon className="h-4 w-4" />
     if (file.mime_type?.includes('pdf')) return <FileText className="h-4 w-4" />
+    if (isExcel) return <FileText className="h-4 w-4 text-green-600" />
     return <FileText className="h-4 w-4" />
   }
 
@@ -247,7 +276,7 @@ export const FilePreviewModal = ({
 
         {/* Content */}
         <div 
-          className="flex-1 overflow-hidden bg-muted/20 relative"
+          className="flex-1 overflow-auto bg-muted/20 relative"
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
@@ -288,6 +317,19 @@ export const FilePreviewModal = ({
               title={file.filename}
               allow="autoplay"
             />
+          ) : isExcel ? (
+            <div className="w-full h-full bg-white p-4 overflow-auto">
+              {isLoadingExcel ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-teal"></div>
+                </div>
+              ) : (
+                <div 
+                  className="excel-table-container max-w-full"
+                  dangerouslySetInnerHTML={{ __html: excelHtml || "" }} 
+                />
+              )}
+            </div>
           ) : (
             <div className="flex items-center justify-center h-64">
               <div className="text-center">
