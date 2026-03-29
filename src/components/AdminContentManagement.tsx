@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { FileUploadManagerFixed } from "@/components/FileUploadManager"
 import { FileDownloader } from "@/components/FileDownloader"
 import MapboxGolfCourseMap from "@/components/MapboxGolfCourseMap"
-import { Building2, Upload, Eye, Trash2, Download, Calendar, Map, FileText, Image, Box, MapPin, RefreshCw } from "lucide-react"
+import { Building2, Upload, Eye, Trash2, Download, Calendar, Map, FileText, Image, Box, MapPin, RefreshCw, Layers } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useGolfCourses, useContentFiles, useDeleteContentFile } from "@/hooks/useSupabaseQuery"
 import { supabase } from "@/integrations/supabase/client"
@@ -20,11 +20,12 @@ const contentTypes = [
   { id: 'reports', name: 'Reports', icon: FileText, color: 'text-green-600' },
   { id: 'hd_maps', name: 'HD Maps', icon: Image, color: 'text-purple-600' },
   { id: '3d_models', name: '3D Models', icon: Box, color: 'text-orange-600' },
+  { id: 'vector_layers', name: 'Vector Layers', icon: Layers, color: 'text-indigo-600' },
 ] as const
 
 export const AdminContentManagement = () => {
   const [selectedClientId, setSelectedClientId] = useState<number | null>(null)
-  const [activeContentTab, setActiveContentTab] = useState<'live_maps' | 'reports' | 'hd_maps' | '3d_models'>('live_maps')
+  const [activeContentTab, setActiveContentTab] = useState<'live_maps' | 'reports' | 'hd_maps' | '3d_models' | 'vector_layers'>('live_maps')
   const [uploadMode, setUploadMode] = useState(false)
   const [viewMode, setViewMode] = useState<'files' | 'map'>('files')
   const [isScanning, setIsScanning] = useState(false)
@@ -330,7 +331,12 @@ export const AdminContentManagement = () => {
 
                 {contentTypes.map((type) => (
                   <TabsContent key={type.id} value={type.id} className="mt-6">
-                    {uploadMode && activeContentTab === type.id ? (
+                    {type.id === 'vector_layers' ? (
+                      <VectorLayerManager 
+                        golfCourseId={selectedClient.id.toString()} 
+                        isAdmin={true} 
+                      />
+                    ) : uploadMode && activeContentTab === type.id ? (
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
                           <h3 className="text-lg font-semibold">Upload {type.name}</h3>
@@ -346,7 +352,7 @@ export const AdminContentManagement = () => {
                           acceptedFormats={
                             type.id === 'reports' ? ['.pdf', '.doc', '.docx', '.xls', '.xlsx'] :
                               type.id === '3d_models' ? ['.obj', '.fbx', '.gltf', '.glb'] :
-                                type.id === 'live_maps' ? ['.jpg', '.jpeg', '.png', '.zip', '.shp', '.shx', '.dbf', '.prj', '.geojson', '.json', '.tif', '.tiff'] :
+                                type.id === 'live_maps' ? ['.jpg', '.jpeg', '.png', '.zip', '.tif', '.tiff'] :
                                   type.id === 'hd_maps' ? ['.jpg', '.jpeg', '.png'] :
                                     ['.jpg', '.jpeg', '.png']
                           }
