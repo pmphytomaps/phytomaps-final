@@ -1006,8 +1006,13 @@ const MapboxGolfCourseMap = ({
       const healthMapId = layerId.replace('health-map-layer-', '');
       const healthMap = healthMapTilesets.find(hm => hm.id === healthMapId);
       if (healthMap) {
+        const baseName = healthMap.analysis_type
+          ? healthMap.analysis_type.toUpperCase()
+          : 'Health Map';
+        const dateStr = healthMap.analysis_date ? formatLayerDate(healthMap.analysis_date) : '';
+        const displayName = dateStr ? `${baseName}_ ${dateStr}` : baseName;
         return {
-          name: healthMap.analysis_type || 'Health Map',
+          name: displayName,
           date: `${healthMap.analysis_date} ${healthMap.analysis_time}`,
           type: 'health' as const
         };
@@ -1030,8 +1035,14 @@ const MapboxGolfCourseMap = ({
       const tilesetId = layerId.replace('tileset-layer-', '');
       const tileset = tilesets.find(t => t.id === tilesetId);
       if (tileset) {
+        const sourceFile = (tileset as any).source_file_id
+          ? rasterFileNames[(tileset as any).source_file_id] || ''
+          : '';
+        const baseName = sourceFile ? stripExtension(sourceFile) : tileset.name;
+        const dateStr = tileset.flight_date ? formatLayerDate(tileset.flight_date) : '';
+        const displayName = dateStr ? `${baseName}_ ${dateStr}` : baseName;
         return {
-          name: tileset.name || 'Raster Layer',
+          name: displayName,
           date: tileset.created_at ? new Date(tileset.created_at).toLocaleDateString() : 'N/A',
           type: 'raster' as const
         };
