@@ -307,6 +307,7 @@ export const AdminContentManagement = () => {
                   golfCourseId={selectedClient.id.toString()}
                   mapboxAccessToken={import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || ''}
                   className="w-full"
+                  isAdmin={true}
                 />
                 <VectorLayerManager 
                   golfCourseId={selectedClient.id.toString()} 

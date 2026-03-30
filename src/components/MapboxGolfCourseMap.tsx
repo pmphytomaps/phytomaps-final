@@ -43,6 +43,7 @@ interface MapboxGolfCourseMapProps {
   showControls?: boolean;
   className?: string;
   onMapReady?: (map: mapboxgl.Map) => void;
+  isAdmin?: boolean; // enables inline layer name/date editing
 }
 
 const MapboxGolfCourseMap = ({
@@ -51,7 +52,8 @@ const MapboxGolfCourseMap = ({
   baseStyle = 'mapbox://styles/mapbox/satellite-streets-v12',
   showControls = true,
   className = '',
-  onMapReady
+  onMapReady,
+  isAdmin = false,
 }: MapboxGolfCourseMapProps) => {
   const t = useT();
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -1018,6 +1020,46 @@ const MapboxGolfCourseMap = ({
   const stripExtension = (filename: string): string =>
     filename.replace(/\.[^.]+$/, '');
 
+  // ── Admin: save edited layer name / date to Supabase ──────────────────────
+  const handleLayerEdit = async (id: string, { name, date }: { name: string; date: string }) => {
+    if (id.startsWith('tileset-layer-')) {
+      const rawId = id.replace('tileset-layer-', '');
+      const { error } = await (supabase as any)
+        .from('golf_course_tilesets')
+        .update({ name, flight_date: date || null })
+        .eq('id', rawId);
+      if (!error) {
+        setTilesets(prev => prev.map(t => t.id === rawId ? { ...t, name, flight_date: date || null } : t));
+      } else {
+        console.error('Failed to update tileset name:', error);
+      }
+    } else if (id.startsWith('health-map-layer-')) {
+      const rawId = id.replace('health-map-layer-', '');
+      const { error } = await (supabase as any)
+        .from('health_map_tilesets')
+        .update({ analysis_type: name, analysis_date: date || null })
+        .eq('id', rawId);
+      if (!error) {
+        setHealthMapTilesets(prev => prev.map(t =>
+          t.id === rawId ? { ...t, analysis_type: name, analysis_date: date || null } : t
+        ));
+      } else {
+        console.error('Failed to update health map name:', error);
+      }
+    } else if (id.startsWith('vector-layer-')) {
+      const rawId = id.replace('vector-layer-', '');
+      const { error } = await (supabase as any)
+        .from('vector_layers')
+        .update({ name })
+        .eq('id', rawId);
+      if (!error) {
+        setVectorLayers(prev => prev.map(v => v.id === rawId ? { ...v, name } : v));
+      } else {
+        console.error('Failed to update vector layer name:', error);
+      }
+    }
+  };
+
   const getLayerMetadata = (layerId: string | null) => {
     if (!layerId) return undefined;
 
@@ -1343,37 +1385,60 @@ const MapboxGolfCourseMap = ({
     }
   };
 
+  // Auto-generated name pattern written by the tile-geotiff workflow:
+  // "CourseName - YYYY-MM-DD" — if name still matches, prefer the source filename.
+  const isAutoGenName = (n: string) => /^.+ - \d{4}-\d{2}-\d{2}$/.test(n);
+
+
   const unifiedLayers = layerOrder.map(id => {
     if (id.startsWith('tileset-layer-')) {
       const rawId = id.replace('tileset-layer-', '');
       const layer = tilesets.find(t => t.id === rawId);
       if (!layer) return null;
-      // Use original uploaded filename when available, fall back to stored name
+      // Name priority: admin-set name > source filename > stored name
       const sourceFile = (layer as any).source_file_id
         ? rasterFileNames[(layer as any).source_file_id] || ''
         : '';
-      const baseName = sourceFile ? stripExtension(sourceFile) : layer.name;
+      const useSourceFile = isAutoGenName(layer.name) && sourceFile;
+      const baseName = useSourceFile ? stripExtension(sourceFile) : layer.name;
+      const editLabel = useSourceFile ? stripExtension(sourceFile) : layer.name;
       const dateStr = layer.flight_date ? formatLayerDate(layer.flight_date) : '';
       const displayName = dateStr ? `${baseName}_ ${dateStr}` : baseName;
-      return { id, rawId, type: 'raster' as const, name: displayName, isVisible: showRasterLayers && selectedLayers.includes(rawId) };
+      return {
+        id, rawId, type: 'raster' as const,
+        name: displayName,
+        editLabel,
+        editDate: layer.flight_date || '',
+        isVisible: showRasterLayers && selectedLayers.includes(rawId),
+      };
     }
     if (id.startsWith('health-map-layer-')) {
       const rawId = id.replace('health-map-layer-', '');
       const layer = healthMapTilesets.find(t => t.id === rawId);
       if (!layer) return null;
-      // Use uppercased analysis_type + date for health maps
-      const baseName = layer.analysis_type
-        ? layer.analysis_type.toUpperCase()
-        : 'Health Map';
+      const baseName = layer.analysis_type ? layer.analysis_type.toUpperCase() : 'Health Map';
       const dateStr = layer.analysis_date ? formatLayerDate(layer.analysis_date) : '';
       const displayName = dateStr ? `${baseName}_ ${dateStr}` : baseName;
-      return { id, rawId, type: 'health' as const, name: displayName, isVisible: showHealthMaps && selectedHealthMapIds.includes(rawId) };
+      return {
+        id, rawId, type: 'health' as const,
+        name: displayName,
+        editLabel: layer.analysis_type || '',
+        editDate: layer.analysis_date || '',
+        isVisible: showHealthMaps && selectedHealthMapIds.includes(rawId),
+      };
     }
     if (id.startsWith('vector-layer-')) {
       const rawId = id.replace('vector-layer-', '');
       const layer = vectorLayers.find(t => t.id === rawId);
       if (!layer) return null;
-      return { id, rawId, type: 'vector' as const, name: layer.name, isVisible: visibleVectorLayers.has(rawId), color: getLayerColor(layer.name) };
+      return {
+        id, rawId, type: 'vector' as const,
+        name: layer.name,
+        editLabel: layer.name,
+        editDate: '',
+        isVisible: visibleVectorLayers.has(rawId),
+        color: getLayerColor(layer.name),
+      };
     }
     return null;
   }).filter(Boolean) as any[];
@@ -1523,6 +1588,9 @@ const MapboxGolfCourseMap = ({
                             type={layer.type}
                             color={layer.color}
                             onToggle={handleUnifiedLayerToggle}
+                            editLabel={layer.editLabel}
+                            editDate={layer.editDate}
+                            onEdit={isAdmin ? handleLayerEdit : undefined}
                           />
                         ))}
                       </SortableContext>
