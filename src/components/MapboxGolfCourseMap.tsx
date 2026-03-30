@@ -81,6 +81,9 @@ const MapboxGolfCourseMap = ({
   const [visibleVectorLayers, setVisibleVectorLayers] = useState<Set<string>>(new Set());
   const [showVectorLayerPanel, setShowVectorLayerPanel] = useState(false);
   const [vectorLayersAboveHealth, setVectorLayersAboveHealth] = useState(true);
+
+  // Map of content_files.id → original_filename for raster display names
+  const [rasterFileNames, setRasterFileNames] = useState<Record<string, string>>({});
   
   // Raster layer control - always shown by default
   const [showRasterLayers, setShowRasterLayers] = useState(true);
@@ -247,6 +250,24 @@ const MapboxGolfCourseMap = ({
         setTilesets(tilesetsData || []);
         if (tilesetsData && tilesetsData.length > 0) {
           setSelectedLayers([tilesetsData[0].id]);
+        }
+
+        // Fetch original filenames from content_files for proper layer display names
+        const sourceFileIds = (tilesetsData || [])
+          .map((t: any) => t.source_file_id)
+          .filter(Boolean) as string[];
+        if (sourceFileIds.length > 0) {
+          const { data: contentFiles } = await (supabase as any)
+            .from('content_files')
+            .select('id, original_filename, filename')
+            .in('id', sourceFileIds);
+          if (contentFiles) {
+            const namesMap: Record<string, string> = {};
+            contentFiles.forEach((cf: any) => {
+              namesMap[cf.id] = cf.original_filename || cf.filename || '';
+            });
+            setRasterFileNames(namesMap);
+          }
         }
 
         console.log('Loading health maps for golf_course_id:', golfCourseId);
@@ -1292,18 +1313,42 @@ const MapboxGolfCourseMap = ({
     }
   };
 
+  // Helper: convert YYYY-MM-DD → DD/MM/YYYY for display
+  const formatLayerDate = (dateStr: string): string => {
+    const parts = dateStr.split('-');
+    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    return dateStr;
+  };
+
+  // Helper: strip file extension (e.g. "NDVI.tif" → "NDVI")
+  const stripExtension = (filename: string): string =>
+    filename.replace(/\.[^.]+$/, '');
+
   const unifiedLayers = layerOrder.map(id => {
     if (id.startsWith('tileset-layer-')) {
       const rawId = id.replace('tileset-layer-', '');
       const layer = tilesets.find(t => t.id === rawId);
       if (!layer) return null;
-      return { id, rawId, type: 'raster' as const, name: layer.name, isVisible: showRasterLayers && selectedLayers.includes(rawId) };
+      // Use original uploaded filename when available, fall back to stored name
+      const sourceFile = (layer as any).source_file_id
+        ? rasterFileNames[(layer as any).source_file_id] || ''
+        : '';
+      const baseName = sourceFile ? stripExtension(sourceFile) : layer.name;
+      const dateStr = layer.flight_date ? formatLayerDate(layer.flight_date) : '';
+      const displayName = dateStr ? `${baseName}_ ${dateStr}` : baseName;
+      return { id, rawId, type: 'raster' as const, name: displayName, isVisible: showRasterLayers && selectedLayers.includes(rawId) };
     }
     if (id.startsWith('health-map-layer-')) {
       const rawId = id.replace('health-map-layer-', '');
       const layer = healthMapTilesets.find(t => t.id === rawId);
       if (!layer) return null;
-      return { id, rawId, type: 'health' as const, name: layer.analysis_type || layer.name || 'Health Map', isVisible: showHealthMaps && selectedHealthMapIds.includes(rawId) };
+      // Use uppercased analysis_type + date for health maps
+      const baseName = layer.analysis_type
+        ? layer.analysis_type.toUpperCase()
+        : 'Health Map';
+      const dateStr = layer.analysis_date ? formatLayerDate(layer.analysis_date) : '';
+      const displayName = dateStr ? `${baseName}_ ${dateStr}` : baseName;
+      return { id, rawId, type: 'health' as const, name: displayName, isVisible: showHealthMaps && selectedHealthMapIds.includes(rawId) };
     }
     if (id.startsWith('vector-layer-')) {
       const rawId = id.replace('vector-layer-', '');

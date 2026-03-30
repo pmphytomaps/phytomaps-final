@@ -26,6 +26,8 @@ export interface GolfCourseTileset {
     is_active: boolean;
     created_at: string;
     updated_at: string;
+    // Links to the origin content_file record for display name lookup
+    source_file_id?: string | null;
 }
 
 export type TilesetInsert = Partial<GolfCourseTileset>;
