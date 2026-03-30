@@ -252,22 +252,30 @@ const MapboxGolfCourseMap = ({
           setSelectedLayers([tilesetsData[0].id]);
         }
 
-        // Fetch original filenames from content_files for proper layer display names
-        const sourceFileIds = (tilesetsData || [])
-          .map((t: any) => t.source_file_id)
-          .filter(Boolean) as string[];
-        if (sourceFileIds.length > 0) {
-          const { data: contentFiles } = await (supabase as any)
-            .from('content_files')
-            .select('id, original_filename, filename')
-            .in('id', sourceFileIds);
-          if (contentFiles) {
-            const namesMap: Record<string, string> = {};
-            contentFiles.forEach((cf: any) => {
-              namesMap[cf.id] = cf.original_filename || cf.filename || '';
-            });
-            setRasterFileNames(namesMap);
+        // Fetch original filenames from content_files for proper layer display names.
+        // Wrapped in its own try/catch: if the table is inaccessible (RLS, etc.)
+        // the map still loads — display names just fall back to tileset.name.
+        try {
+          const sourceFileIds = (tilesetsData || [])
+            .map((t: any) => t.source_file_id)
+            .filter(Boolean) as string[];
+          if (sourceFileIds.length > 0) {
+            const { data: contentFiles, error: cfError } = await (supabase as any)
+              .from('content_files')
+              .select('id, original_filename, filename')
+              .in('id', sourceFileIds);
+            if (cfError) {
+              console.warn('Could not load layer display names (non-fatal):', cfError);
+            } else if (contentFiles) {
+              const namesMap: Record<string, string> = {};
+              contentFiles.forEach((cf: any) => {
+                namesMap[cf.id] = cf.original_filename || cf.filename || '';
+              });
+              setRasterFileNames(namesMap);
+            }
           }
+        } catch (nameErr) {
+          console.warn('Could not load layer display names (non-fatal):', nameErr);
         }
 
         console.log('Loading health maps for golf_course_id:', golfCourseId);
