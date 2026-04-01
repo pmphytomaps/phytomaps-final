@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ClientHeader } from "@/components/ClientHeader";
 import { DashboardTile } from "@/components/DashboardTile";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,6 +7,7 @@ import { useContentFiles } from "@/hooks/useSupabaseQuery";
 import { DroneImageUploader } from "@/components/DroneImageUploader";
 import { RecentUploads } from "@/components/RecentUploads";
 import { useT } from "@/translations";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ClientDashboardProps {
   onLogout: () => void;
@@ -30,11 +31,48 @@ export const ClientDashboard = ({
   onCourseChange
 }: ClientDashboardProps) => {
   const [uploadRefreshTrigger, setUploadRefreshTrigger] = useState(0);
+  const [liveMapCount, setLiveMapCount] = useState(0);
   const {
     data: contentFiles = [],
     isLoading
   } = useContentFiles(golfCourseId);
   const t = useT();
+
+  useEffect(() => {
+    const fetchMapCounts = async () => {
+      let count = 0;
+      
+      const { count: rasterCount } = await supabase
+        .from('golf_course_tilesets')
+        .select('*', { count: 'exact', head: true })
+        .eq('golf_course_id', golfCourseId)
+        .eq('is_active', true);
+        
+      const { count: healthCount } = await supabase
+        .from('health_map_tilesets')
+        .select('*', { count: 'exact', head: true })
+        .eq('golf_course_id', golfCourseId)
+        .eq('is_active', true);
+        
+      const { count: vectorCount } = await supabase
+        .from('vector_layers')
+        .select('*', { count: 'exact', head: true })
+        .eq('golf_course_id', golfCourseId)
+        .eq('is_active', true);
+
+      count += (rasterCount || 0) + (healthCount || 0) + (vectorCount || 0);
+      
+      // Also include any 'live_maps' in content_files
+      const fileCount = contentFiles.filter(f => f.file_category === 'live_maps' && f.status === 'published').length;
+      count += fileCount;
+      
+      setLiveMapCount(count);
+    };
+    
+    if (!isLoading) {
+      fetchMapCounts();
+    }
+  }, [golfCourseId, isLoading, contentFiles]);
 
   const getNewFilesCount = (category: string, sectionAlias: string) => {
     const lastVisitedStr = localStorage.getItem(`last_visited_${sectionAlias}_${golfCourseId}`);
@@ -58,7 +96,7 @@ export const ClientDashboard = ({
         title: t.tiles.liveMapsTitle,
         description: t.tiles.liveMapsDesc,
         icon: Map,
-        count: isLoading ? 0 : contentFiles.filter(f => f.file_category === 'live_maps' && f.status === 'published').length,
+        count: isLoading ? 0 : liveMapCount,
         badge: liveMapsNew > 0 ? `${liveMapsNew} ${t.dashboard.badgeNew}` : undefined,
         section: "live-maps",
         status: "active"
@@ -159,7 +197,7 @@ export const ClientDashboard = ({
                     <div className="text-xs sm:text-sm text-muted-foreground">{t.dashboard.statsTotalFiles}</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-success-green mb-1">{contentFiles.filter(f => f.file_category === 'live_maps').length}</div>
+                    <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-success-green mb-1">{liveMapCount}</div>
                     <div className="text-xs sm:text-sm text-muted-foreground">{t.dashboard.statsMapsAvailable}</div>
                   </div>
                   <div className="text-center">
