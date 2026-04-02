@@ -220,30 +220,47 @@ All colors MUST be HSL.
     display: none !important;
   }
 
-  /* Scale bar – keep it compact and semi-transparent */
+  /* Scale bar – compact and semi-transparent, sitting above attribution */
   .mapboxgl-ctrl-scale {
-    font-size: 10px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
     line-height: 1.2 !important;
-    padding: 1px 4px !important;
-    background: rgba(255, 255, 255, 0.75) !important;
+    padding: 2px 6px !important;
+    background: rgba(255, 255, 255, 0.85) !important;
     backdrop-filter: blur(4px) !important;
-    border-radius: 3px !important;
-    border-color: rgba(0, 0, 0, 0.3) !important;
+    border-radius: 4px !important;
+    border: 1px solid rgba(0, 0, 0, 0.2) !important;
     color: #111 !important;
-    margin-bottom: 6px !important;
-    margin-right: 6px !important;
-    max-width: 90px !important;
+    margin-bottom: 24px !important; /* Move it up so it doesn't overlap text */
+    margin-right: 12px !important;
+    max-width: 100px !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
   }
 
-  /* Compass / north arrow – keep it small */
-  .mapboxgl-ctrl-bottom-right .mapboxgl-ctrl-compass {
-    width: 28px !important;
-    height: 28px !important;
-    margin-bottom: 6px !important;
-    margin-right: 6px !important;
-    opacity: 0.85;
+  /* Compass / north arrow – force always visible and make it distinct */
+  .mapboxgl-ctrl-bottom-right .mapboxgl-ctrl-group {
+    display: block !important;
+    background: rgba(255, 255, 255, 0.85) !important;
+    backdrop-filter: blur(4px) !important;
+    border-radius: 50% !important;
+    border: 1px solid rgba(0, 0, 0, 0.2) !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+    margin-bottom: 50px !important; /* Stack above the scale bar */
+    margin-right: 12px !important;
+    padding: 2px !important;
   }
-  .mapboxgl-ctrl-bottom-right .mapboxgl-ctrl-compass:hover {
-    opacity: 1;
+
+  .mapboxgl-ctrl-bottom-right .mapboxgl-ctrl-compass {
+    display: block !important;
+    width: 32px !important;
+    height: 32px !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+
+  /* Ensure the compass arrow itself is visible and pointed North */
+  .mapboxgl-ctrl-compass-arrow {
+    opacity: 1 !important;
+    visibility: visible !important;
   }
 }
