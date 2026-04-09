@@ -56,22 +56,11 @@ export const LoginForm = ({ type, onLogin, onForgotPassword }: LoginFormProps) =
           setIsLoading(false)
           return
         }
-        
-        // Role matches - log the login event
-        const { error: logError } = await supabase.from('user_login_logs').insert({
-          user_id: user.id,
-          portal_type: type,
-          user_agent: navigator.userAgent,
-          metadata: { email: user.email }
-        })
-        if (logError) {
-          console.warn('Login log failed (but proceeding with login):', logError)
-        }
 
         onLogin(credentials)
         setIsLoading(false)
       }
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Validation Error",
         description: "Could not validate user role",
