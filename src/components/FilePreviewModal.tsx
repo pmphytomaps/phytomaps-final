@@ -59,6 +59,7 @@ export const FilePreviewModal = ({
   const [initialPinchZoom, setInitialPinchZoom] = useState(1)
   const imageRef = useRef<HTMLImageElement>(null)
   const modelViewerRef = useRef<any>(null)
+  const tiltLabelRef = useRef<HTMLSpanElement>(null)
   const [modelOrientation, setModelOrientation] = useState({ x: 0, y: 0, z: 0 })
   
   const [excelSheets, setExcelSheets] = useState<{name: string, html: string}[]>([])
@@ -402,6 +403,8 @@ export const FilePreviewModal = ({
                 alt={file.filename}
                 camera-controls
                 enable-pan
+                loading="eager"
+                reveal="auto"
                 min-camera-orbit="auto auto 1%"
                 max-camera-orbit="auto 180deg auto"
                 min-field-of-view="1deg"
@@ -440,11 +443,18 @@ export const FilePreviewModal = ({
                   <div className="w-full bg-black/60 backdrop-blur-md border border-white/10 rounded-xl px-4 py-3 shadow-xl">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-white/80 text-xs font-semibold uppercase tracking-wider">Model Tilt</span>
-                      <span className="text-orange-400 font-mono text-xs">{modelOrientation.x}°</span>
+                      <span ref={tiltLabelRef} className="text-orange-400 font-mono text-xs">{modelOrientation.x}°</span>
                     </div>
                     <Slider 
-                      value={[modelOrientation.x]} 
-                      onValueChange={(val) => setModelOrientation(prev => ({...prev, x: val[0]}))} 
+                      defaultValue={[modelOrientation.x]} 
+                      onValueChange={(val) => {
+                        const newX = val[0];
+                        if (tiltLabelRef.current) tiltLabelRef.current.innerText = `${newX}°`;
+                        if (modelViewerRef.current) {
+                          modelViewerRef.current.orientation = `${newX}deg ${modelOrientation.y}deg ${modelOrientation.z}deg`;
+                        }
+                      }}
+                      onValueCommit={(val) => setModelOrientation(prev => ({...prev, x: val[0]}))}
                       max={360} 
                       step={1} 
                       className="[&_[role=slider]]:bg-orange-500 [&_[role=slider]]:border-orange-200"
