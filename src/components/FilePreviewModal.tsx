@@ -402,8 +402,6 @@ export const FilePreviewModal = ({
                 alt={file.filename}
                 camera-controls
                 enable-pan
-                auto-rotate
-                auto-rotate-delay="3000"
                 min-camera-orbit="auto auto 1%"
                 max-camera-orbit="auto 180deg auto"
                 min-field-of-view="1deg"
