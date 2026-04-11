@@ -55,10 +55,10 @@ export const FilePreviewModal = ({
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
-  const [lastTouchDistance, setLastTouchDistance] = useState(0)
   const [initialPinchZoom, setInitialPinchZoom] = useState(1)
   const imageRef = useRef<HTMLImageElement>(null)
   const modelViewerRef = useRef<any>(null)
+  const [modelOrientation, setModelOrientation] = useState({ x: 0, y: 0, z: 0 })
   
   const [excelSheets, setExcelSheets] = useState<{name: string, html: string}[]>([])
   const [activeSheetIndex, setActiveSheetIndex] = useState(0)
@@ -117,6 +117,13 @@ export const FilePreviewModal = ({
     if (!mv) return;
     const fov = mv.getFieldOfView(); // in degrees
     mv.fieldOfView = `${Math.max(1, Math.min(120, fov + deltaFovDeg))}deg`;
+  };
+
+  const rotateModelAxis = (axis: 'x' | 'y' | 'z', deltaDeg: number) => {
+    setModelOrientation(prev => ({
+      ...prev,
+      [axis]: (prev[axis] + deltaDeg) % 360
+    }));
   };
 
   // Helper function to get touch distance for pinch-to-zoom
@@ -406,6 +413,7 @@ export const FilePreviewModal = ({
                 shadow-softness="0.8"
                 environment-image="neutral"
                 exposure="1.1"
+                orientation={`${modelOrientation.x}deg ${modelOrientation.y}deg ${modelOrientation.z}deg`}
                 style={{ width: '100%', height: '100%', backgroundColor: '#0f172a' }}
               >
                 <div slot="progress-bar" />
@@ -413,30 +421,67 @@ export const FilePreviewModal = ({
               </model-viewer>
 
               {/* Floating controls on the right side */}
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 bg-black/60 backdrop-blur-md p-2 rounded-xl border border-white/10 z-10 shadow-2xl">
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-white hover:bg-white/20 mx-auto" onClick={() => rotateModel(0, -15)} title="Rotate Up">
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 bg-black/60 backdrop-blur-md p-3 rounded-xl border border-white/10 z-10 shadow-2xl">
+                <div className="text-[10px] uppercase font-bold text-white/50 text-center tracking-wider mb-1">Camera</div>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-white hover:bg-white/20 mx-auto" onClick={() => rotateModel(0, -15)} title="Camera Up">
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6"/></svg>
                 </Button>
                 <div className="flex gap-1 justify-center">
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-white hover:bg-white/20" onClick={() => rotateModel(-15, 0)} title="Rotate Left">
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-white hover:bg-white/20" onClick={() => rotateModel(-15, 0)} title="Camera Left">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-white hover:bg-white/20" onClick={() => rotateModel(15, 0)} title="Rotate Right">
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-white hover:bg-white/20" onClick={() => rotateModel(15, 0)} title="Camera Right">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
                   </Button>
                 </div>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-white hover:bg-white/20 mx-auto" onClick={() => rotateModel(0, 15)} title="Rotate Down">
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-white hover:bg-white/20 mx-auto" onClick={() => rotateModel(0, 15)} title="Camera Down">
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                 </Button>
+                <div className="flex justify-center gap-1 mt-1">
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-white hover:bg-white/20" onClick={() => zoomModel(-10)} title="Zoom In">
+                    <ZoomIn className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-white hover:bg-white/20" onClick={() => zoomModel(10)} title="Zoom Out">
+                    <ZoomOut className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                <div className="w-full h-px bg-white/20 my-2"/>
                 
-                <div className="w-full h-px bg-white/20 my-1"/>
-                
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-white hover:bg-white/20 mx-auto" onClick={() => zoomModel(-10)} title="Zoom In">
-                  <ZoomIn className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-white hover:bg-white/20 mx-auto" onClick={() => zoomModel(10)} title="Zoom Out">
-                  <ZoomOut className="h-4 w-4" />
-                </Button>
+                <div className="text-[10px] uppercase font-bold text-white/50 text-center tracking-wider mb-1">Model Axes</div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-rose-400 font-mono font-bold w-3 text-center">X</span>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-white hover:bg-white/20" onClick={() => rotateModelAxis('x', -90)} title="Rotate X -90°">
+                      <RotateCcw className="h-3 w-3" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-white hover:bg-white/20" onClick={() => rotateModelAxis('x', 90)} title="Rotate X +90°">
+                      <RotateCw className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-green-400 font-mono font-bold w-3 text-center">Y</span>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-white hover:bg-white/20" onClick={() => rotateModelAxis('y', -90)} title="Rotate Y -90°">
+                      <RotateCcw className="h-3 w-3" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-white hover:bg-white/20" onClick={() => rotateModelAxis('y', 90)} title="Rotate Y +90°">
+                      <RotateCw className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-blue-400 font-mono font-bold w-3 text-center">Z</span>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-white hover:bg-white/20" onClick={() => rotateModelAxis('z', -90)} title="Rotate Z -90°">
+                      <RotateCcw className="h-3 w-3" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-white hover:bg-white/20" onClick={() => rotateModelAxis('z', 90)} title="Rotate Z +90°">
+                      <RotateCw className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
               </div>
             </div>
           ) : (

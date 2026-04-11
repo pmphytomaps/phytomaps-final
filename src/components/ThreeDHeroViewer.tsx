@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Box, Loader2, AlertCircle, RefreshCw, MousePointer2, ZoomIn } from "lucide-react"
+import { Box, Loader2, AlertCircle, RefreshCw, MousePointer2, ZoomIn, RotateCw, RotateCcw } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import '@google/model-viewer'
 
@@ -25,6 +25,14 @@ export const ThreeDHeroViewer = ({ file }: ThreeDHeroViewerProps) => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [isFetching, setIsFetching] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [modelOrientation, setModelOrientation] = useState({ x: 0, y: 0, z: 0 })
+
+  const rotateModelAxis = (axis: 'x' | 'y' | 'z', deltaDeg: number) => {
+    setModelOrientation(prev => ({
+      ...prev,
+      [axis]: (prev[axis] + deltaDeg) % 360
+    }));
+  };
 
   useEffect(() => {
     let isMounted = true
@@ -112,6 +120,7 @@ export const ThreeDHeroViewer = ({ file }: ThreeDHeroViewerProps) => {
           shadow-softness="0.8"
           environment-image="neutral"
           exposure="1.1"
+          orientation={`${modelOrientation.x}deg ${modelOrientation.y}deg ${modelOrientation.z}deg`}
           style={{ width: '100%', height: '100%', backgroundColor: '#0f172a' }}
         >
           {/* Suppress model-viewer default UI slots */}
@@ -138,7 +147,7 @@ export const ThreeDHeroViewer = ({ file }: ThreeDHeroViewerProps) => {
             </div>
           </div>
 
-          <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+          <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none flex flex-col items-end gap-3">
             <div className="bg-black/50 backdrop-blur-md border border-white/10 rounded-xl px-3 py-2 flex flex-col gap-1.5">
               <div className="flex items-center gap-2 text-white/60 text-xs">
                 <MousePointer2 className="h-3 w-3 shrink-0" />
@@ -151,6 +160,43 @@ export const ThreeDHeroViewer = ({ file }: ThreeDHeroViewerProps) => {
               <div className="flex items-center gap-2 text-white/60 text-xs">
                 <MousePointer2 className="h-3 w-3 shrink-0 rotate-90" />
                 <span>Right drag — pan</span>
+              </div>
+            </div>
+
+            <div className="bg-black/50 backdrop-blur-md border border-white/10 rounded-xl px-3 py-2 flex flex-col gap-1.5 pointer-events-auto">
+              <div className="text-[10px] uppercase font-bold text-white/50 text-center tracking-wider mb-0.5">Model Axes</div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs text-rose-400 font-mono font-bold w-3 text-center">X</span>
+                <div className="flex gap-1">
+                  <Button variant="ghost" size="icon" className="h-6 w-6 text-white hover:bg-white/20" onClick={() => rotateModelAxis('x', -90)} title="Rotate X -90°">
+                    <RotateCcw className="h-3 w-3" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 text-white hover:bg-white/20" onClick={() => rotateModelAxis('x', 90)} title="Rotate X +90°">
+                    <RotateCw className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs text-green-400 font-mono font-bold w-3 text-center">Y</span>
+                <div className="flex gap-1">
+                  <Button variant="ghost" size="icon" className="h-6 w-6 text-white hover:bg-white/20" onClick={() => rotateModelAxis('y', -90)} title="Rotate Y -90°">
+                    <RotateCcw className="h-3 w-3" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 text-white hover:bg-white/20" onClick={() => rotateModelAxis('y', 90)} title="Rotate Y +90°">
+                    <RotateCw className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs text-blue-400 font-mono font-bold w-3 text-center">Z</span>
+                <div className="flex gap-1">
+                  <Button variant="ghost" size="icon" className="h-6 w-6 text-white hover:bg-white/20" onClick={() => rotateModelAxis('z', -90)} title="Rotate Z -90°">
+                    <RotateCcw className="h-3 w-3" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 text-white hover:bg-white/20" onClick={() => rotateModelAxis('z', 90)} title="Rotate Z +90°">
+                    <RotateCw className="h-3 w-3" />
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
