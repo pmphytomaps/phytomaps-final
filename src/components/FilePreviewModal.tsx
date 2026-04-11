@@ -306,7 +306,7 @@ export const FilePreviewModal = ({
 
         {/* Content */}
         <div 
-          className="flex-1 overflow-auto bg-muted/20 relative"
+          className="flex-1 overflow-hidden bg-muted/20 relative flex flex-col"
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
